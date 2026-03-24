@@ -57,7 +57,7 @@
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/flipiq.git
+git clone https://github.com/zizouw-ai/flipiq.git
 cd flipiq
 
 # Install backend dependencies

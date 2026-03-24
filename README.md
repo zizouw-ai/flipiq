@@ -1,6 +1,6 @@
 # FlipIQ 💰
 
-**eBay Reseller Profit & Pricing Calculator** — Built for Canadian sellers who buy from Encore Auctions (London, ON) and resell on eBay Canada.
+**Smart profit & pricing calculator for eBay resellers.**
 
 ![FlipIQ Screenshot](./screenshots/calculator.png)
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../api';
+import { api, CHANNELS, CHANNEL_MAP } from '../api';
 
 const STATUSES = ['unlisted', 'listed', 'sold', 'unsold'];
 const STATUS_COLORS = {
@@ -24,7 +24,7 @@ export default function AuctionTracker() {
     name: '', hammer_price: '', category: 'Most Categories (Default)',
     payment_method: 'etransfer', status: 'unlisted', list_price: '',
     sold_price: '', sell_date: '', shipping_cost_actual: '0',
-    shipping_charged_buyer: '0', promoted_pct: '0', notes: '',
+    shipping_charged_buyer: '0', promoted_pct: '0', sale_channel: 'ebay', notes: '',
   });
 
   const loadAuctions = () => api.listAuctions().then(setAuctions).catch(() => {});
@@ -55,6 +55,7 @@ export default function AuctionTracker() {
       shipping_cost_actual: parseFloat(iForm.shipping_cost_actual) || 0,
       shipping_charged_buyer: parseFloat(iForm.shipping_charged_buyer) || 0,
       promoted_pct: parseFloat(iForm.promoted_pct) || 0,
+      sale_channel: iForm.sale_channel,
     };
     await api.createItem(selectedId, data);
     setShowItemForm(false);
@@ -71,6 +72,7 @@ export default function AuctionTracker() {
       shipping_cost_actual: parseFloat(iForm.shipping_cost_actual) || 0,
       shipping_charged_buyer: parseFloat(iForm.shipping_charged_buyer) || 0,
       promoted_pct: parseFloat(iForm.promoted_pct) || 0,
+      sale_channel: iForm.sale_channel,
     };
     await api.updateItem(editItem.id, data);
     setEditItem(null); setShowItemForm(false);
@@ -88,7 +90,7 @@ export default function AuctionTracker() {
     name: '', hammer_price: '', category: 'Most Categories (Default)',
     payment_method: 'etransfer', status: 'unlisted', list_price: '',
     sold_price: '', sell_date: '', shipping_cost_actual: '0',
-    shipping_charged_buyer: '0', promoted_pct: '0', notes: '',
+    shipping_charged_buyer: '0', promoted_pct: '0', sale_channel: 'ebay', notes: '',
   });
 
   const startEditItem = (item) => {
@@ -100,7 +102,8 @@ export default function AuctionTracker() {
       sold_price: item.sold_price ? String(item.sold_price) : '',
       sell_date: item.sell_date || '', shipping_cost_actual: String(item.shipping_cost_actual),
       shipping_charged_buyer: String(item.shipping_charged_buyer),
-      promoted_pct: String(item.promoted_pct), notes: item.notes,
+      promoted_pct: String(item.promoted_pct),
+      sale_channel: item.sale_channel || 'ebay', notes: item.notes,
     });
     setShowItemForm(true);
   };
@@ -242,7 +245,35 @@ export default function AuctionTracker() {
                       <input type="number" className="input-field" value={iForm.promoted_pct}
                         onChange={e => setIForm(f => ({ ...f, promoted_pct: e.target.value }))} id="item-promoted" />
                     </div>
+                    <div>
+                      <label className="text-xs text-surface-400 mb-1 block">Sale Channel</label>
+                      <select className="input-field" value={iForm.sale_channel}
+                        onChange={e => setIForm(f => ({ ...f, sale_channel: e.target.value }))} id="item-channel">
+                        {CHANNELS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      </select>
+                    </div>
                   </div>
+                  {/* Channel fee badge */}
+                  {iForm.sale_channel === 'kijiji' && (
+                    <div className="bg-success-400/10 border border-success-400/20 rounded-xl p-3 mt-4 text-sm text-success-400">
+                      🟢 No platform fees — full profit kept
+                    </div>
+                  )}
+                  {iForm.sale_channel === 'facebook_local' && (
+                    <div className="bg-success-400/10 border border-success-400/20 rounded-xl p-3 mt-4 text-sm text-success-400">
+                      🟢 Local cash sale — no fees, no shipping
+                    </div>
+                  )}
+                  {iForm.sale_channel === 'facebook_shipped' && (
+                    <div className="bg-warning-400/10 border border-warning-400/20 rounded-xl p-3 mt-4 text-sm text-warning-400">
+                      📦 Fee: 10% of sale price (min $0.80)
+                    </div>
+                  )}
+                  {iForm.sale_channel === 'poshmark' && (
+                    <div className="bg-danger-400/10 border border-danger-400/20 rounded-xl p-3 mt-4 text-sm text-danger-400">
+                      👜 Fee: 20% if ≥ C$20 / flat C$3.95 if under C$20
+                    </div>
+                  )}
                   <div className="mt-4">
                     <label className="text-xs text-surface-400 mb-1 block">Notes</label>
                     <textarea className="input-field" rows={2} value={iForm.notes}
@@ -267,6 +298,7 @@ export default function AuctionTracker() {
                           <th className="text-left p-4 text-surface-400 font-medium">Item</th>
                           <th className="text-right p-4 text-surface-400 font-medium">Hammer</th>
                           <th className="text-right p-4 text-surface-400 font-medium">Buy Cost</th>
+                          <th className="text-center p-4 text-surface-400 font-medium">Channel</th>
                           <th className="text-center p-4 text-surface-400 font-medium">Status</th>
                           <th className="text-right p-4 text-surface-400 font-medium">Sold</th>
                           <th className="text-right p-4 text-surface-400 font-medium">Profit</th>
@@ -280,6 +312,11 @@ export default function AuctionTracker() {
                             <td className="p-4 text-surface-200 font-medium">{item.name}</td>
                             <td className="p-4 text-right text-surface-300">{fmt(item.hammer_price)}</td>
                             <td className="p-4 text-right text-surface-300">{fmt(item.buy_cost_total)}</td>
+                            <td className="p-4 text-center">
+                              <span className="text-xs font-medium px-2 py-1 rounded-full" style={{ background: (CHANNEL_MAP[item.sale_channel]?.color || '#64748b') + '20', color: CHANNEL_MAP[item.sale_channel]?.color || '#64748b' }}>
+                                {CHANNEL_MAP[item.sale_channel]?.label?.split(' ')[0] || 'eBay'}
+                              </span>
+                            </td>
                             <td className="p-4 text-center">
                               <span className={`status-badge ${STATUS_COLORS[item.status]}`}>{item.status}</span>
                             </td>

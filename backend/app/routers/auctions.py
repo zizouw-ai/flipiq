@@ -1,4 +1,4 @@
-"""Auction & Item CRUD API endpoints."""
+"""Auction & Item CRUD API endpoints — with multi-channel fee support."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
@@ -8,27 +8,38 @@ from app.schemas import (
     ItemCreate, ItemUpdate, ItemResponse,
 )
 from app.calculators import calculate_encore_cost, calculate_ebay_fees, calculate_net_profit
+from app.fees import calculate_fees
 
 router = APIRouter(prefix="/api/auctions", tags=["auctions"])
 
 
 def _recalc_item(item: Item):
-    """Recalculate buy cost, net profit, and ROI for an item."""
+    """Recalculate buy cost, net profit, and ROI for an item using channel-aware fees."""
     encore = calculate_encore_cost(item.hammer_price, item.payment_method)
     item.buy_cost_total = encore["total_buy_cost"]
 
     if item.sold_price and item.sold_price > 0:
-        ebay = calculate_ebay_fees(
-            item.sold_price,
-            item.shipping_charged_buyer,
-            promoted_pct=item.promoted_pct,
+        channel = item.sale_channel or "ebay"
+
+        if channel == "ebay":
+            ebay = calculate_ebay_fees(
+                item.sold_price,
+                item.shipping_charged_buyer,
+                promoted_pct=item.promoted_pct,
+            )
+            ebay_fees_total = ebay["total_ebay_fees"]
+        else:
+            ebay_fees_total = 0.0
+
+        result = calculate_fees(
+            sale_price=item.sold_price,
+            channel=channel,
+            your_shipping_cost=item.shipping_cost_actual,
+            total_buy_cost=item.buy_cost_total,
+            ebay_fees=ebay_fees_total,
         )
-        profit = calculate_net_profit(
-            item.sold_price, item.buy_cost_total,
-            ebay["total_ebay_fees"], item.shipping_cost_actual,
-        )
-        item.net_profit = profit["net_profit"]
-        item.roi_pct = profit["roi_pct"]
+        item.net_profit = result["net_profit"]
+        item.roi_pct = result["roi_pct"]
 
 
 # --- Auctions CRUD ---

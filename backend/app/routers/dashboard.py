@@ -1,12 +1,39 @@
-"""Dashboard API — KPIs and chart data aggregated from auction/item data."""
-from fastapi import APIRouter, Depends, Query
+"""Dashboard API — KPIs and chart data with multi-channel support."""
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from typing import Optional
 from app.database import get_db
 from app.models import Item, Auction
+from app.fees import calculate_fees, CHANNEL_LABELS
+from app.calculators import calculate_ebay_fees
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+
+def _get_item_fees(item):
+    """Get platform fees for an item based on its channel."""
+    channel = item.sale_channel or "ebay"
+    if not item.sold_price:
+        return 0.0
+    if channel == "ebay":
+        ebay = calculate_ebay_fees(item.sold_price, item.shipping_charged_buyer, promoted_pct=item.promoted_pct)
+        return ebay["total_ebay_fees"]
+    result = calculate_fees(item.sold_price, channel, item.shipping_cost_actual, item.buy_cost_total)
+    return result["platform_fee"]
+
+
+def _apply_filters(query, date_from, date_to, category, auction_name, channel, db):
+    if date_from:
+        query = query.filter(Auction.date >= date_from)
+    if date_to:
+        query = query.filter(Auction.date <= date_to)
+    if category:
+        query = query.filter(Item.category == category)
+    if auction_name:
+        query = query.filter(Auction.name.ilike(f"%{auction_name}%"))
+    if channel and channel != "all":
+        query = query.filter(Item.sale_channel == channel)
+    return query
 
 
 @router.get("/kpis")
@@ -16,18 +43,11 @@ def get_kpis(
     category: Optional[str] = None,
     auction_name: Optional[str] = None,
     status: Optional[str] = None,
+    channel: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     query = db.query(Item).join(Auction)
-
-    if date_from:
-        query = query.filter(Auction.date >= date_from)
-    if date_to:
-        query = query.filter(Auction.date <= date_to)
-    if category:
-        query = query.filter(Item.category == category)
-    if auction_name:
-        query = query.filter(Auction.name.ilike(f"%{auction_name}%"))
+    query = _apply_filters(query, date_from, date_to, category, auction_name, channel, db)
     if status:
         query = query.filter(Item.status == status)
 
@@ -38,18 +58,12 @@ def get_kpis(
     listed_items = [i for i in items if i.status in ("listed", "sold")]
     total_revenue = sum(i.sold_price for i in sold_items)
     total_profit = sum(i.net_profit for i in sold_items if i.net_profit is not None)
-    total_ebay_fees = 0
-    for i in sold_items:
-        if i.sold_price:
-            from app.calculators import calculate_ebay_fees
-            fees = calculate_ebay_fees(i.sold_price, i.shipping_charged_buyer, promoted_pct=i.promoted_pct)
-            total_ebay_fees += fees["total_ebay_fees"]
+    total_platform_fees = sum(_get_item_fees(i) for i in sold_items)
 
     overall_roi = (total_profit / total_invested * 100) if total_invested > 0 else 0
     avg_profit = (total_profit / len(sold_items)) if sold_items else 0
     sell_through = (len(sold_items) / len(listed_items) * 100) if listed_items else 0
 
-    # Avg days to sell — simplified (if sell_date is present)
     days_list = []
     for i in sold_items:
         if i.sell_date:
@@ -69,7 +83,7 @@ def get_kpis(
         "total_revenue": round(total_revenue, 2),
         "total_profit": round(total_profit, 2),
         "overall_roi": round(overall_roi, 2),
-        "total_ebay_fees": round(total_ebay_fees, 2),
+        "total_ebay_fees": round(total_platform_fees, 2),
         "avg_profit_per_item": round(avg_profit, 2),
         "sell_through_rate": round(sell_through, 2),
         "avg_days_to_sell": round(avg_days, 1),
@@ -79,15 +93,44 @@ def get_kpis(
     }
 
 
+@router.get("/charts/by-channel")
+def get_channel_summary(db: Session = Depends(get_db)):
+    """Revenue, profit, ROI, items sold grouped by channel."""
+    items = db.query(Item).filter(Item.status == "sold", Item.sold_price.isnot(None)).all()
+    channels = {}
+    for i in items:
+        ch = i.sale_channel or "ebay"
+        if ch not in channels:
+            channels[ch] = {"channel": ch, "label": CHANNEL_LABELS.get(ch, ch),
+                            "revenue": 0, "profit": 0, "cost": 0, "fees": 0, "count": 0}
+        channels[ch]["revenue"] += i.sold_price
+        channels[ch]["profit"] += (i.net_profit or 0)
+        channels[ch]["cost"] += i.buy_cost_total
+        channels[ch]["fees"] += _get_item_fees(i)
+        channels[ch]["count"] += 1
+
+    result = []
+    for c in channels.values():
+        c["avg_roi"] = round((c["profit"] / c["cost"] * 100) if c["cost"] > 0 else 0, 2)
+        c["revenue"] = round(c["revenue"], 2)
+        c["profit"] = round(c["profit"], 2)
+        c["fees"] = round(c["fees"], 2)
+        result.append(c)
+    return sorted(result, key=lambda x: x["revenue"], reverse=True)
+
+
 @router.get("/charts/monthly")
-def get_monthly_chart(db: Session = Depends(get_db)):
-    """Monthly Revenue vs. Cost vs. Profit."""
-    items = db.query(Item).join(Auction).all()
+def get_monthly_chart(channel: Optional[str] = None, db: Session = Depends(get_db)):
+    """Monthly Revenue vs. Cost vs. Profit with optional channel filter."""
+    query = db.query(Item).join(Auction)
+    if channel and channel != "all":
+        query = query.filter(Item.sale_channel == channel)
+    items = query.all()
     monthly = {}
     for item in items:
         auction = db.query(Auction).filter(Auction.id == item.auction_id).first()
         if auction:
-            month_key = auction.date[:7]  # YYYY-MM
+            month_key = auction.date[:7]
             if month_key not in monthly:
                 monthly[month_key] = {"month": month_key, "revenue": 0, "cost": 0, "profit": 0}
             monthly[month_key]["cost"] += item.buy_cost_total
@@ -105,7 +148,6 @@ def get_monthly_chart(db: Session = Depends(get_db)):
 
 @router.get("/charts/roi-by-category")
 def get_roi_by_category(db: Session = Depends(get_db)):
-    """ROI% by category."""
     items = db.query(Item).filter(Item.status == "sold", Item.net_profit.isnot(None)).all()
     cats = {}
     for i in items:
@@ -113,7 +155,6 @@ def get_roi_by_category(db: Session = Depends(get_db)):
             cats[i.category] = {"category": i.category, "total_profit": 0, "total_cost": 0}
         cats[i.category]["total_profit"] += (i.net_profit or 0)
         cats[i.category]["total_cost"] += i.buy_cost_total
-
     result = []
     for c in cats.values():
         roi = (c["total_profit"] / c["total_cost"] * 100) if c["total_cost"] > 0 else 0
@@ -123,42 +164,46 @@ def get_roi_by_category(db: Session = Depends(get_db)):
 
 @router.get("/charts/best-worst")
 def get_best_worst(db: Session = Depends(get_db)):
-    """Best and worst 10 items by net profit."""
     items = db.query(Item).filter(Item.status == "sold", Item.net_profit.isnot(None)).all()
     sorted_items = sorted(items, key=lambda x: x.net_profit or 0, reverse=True)
-    best = [{"name": i.name, "net_profit": round(i.net_profit, 2)} for i in sorted_items[:10]]
-    worst = [{"name": i.name, "net_profit": round(i.net_profit, 2)} for i in sorted_items[-10:]]
+    best = [{"name": i.name, "net_profit": round(i.net_profit, 2), "channel": i.sale_channel or "ebay"} for i in sorted_items[:10]]
+    worst = [{"name": i.name, "net_profit": round(i.net_profit, 2), "channel": i.sale_channel or "ebay"} for i in sorted_items[-10:]]
     return {"best": best, "worst": worst}
 
 
 @router.get("/charts/fee-breakdown")
 def get_fee_breakdown(db: Session = Depends(get_db)):
-    """eBay fee breakdown over time."""
-    from app.calculators import calculate_ebay_fees
+    """Fee breakdown over time — now grouped by channel type."""
     items = db.query(Item).join(Auction).filter(Item.status == "sold", Item.sold_price.isnot(None)).all()
     monthly = {}
     for item in items:
         auction = db.query(Auction).filter(Auction.id == item.auction_id).first()
         if auction and item.sold_price:
             month = auction.date[:7]
-            fees = calculate_ebay_fees(item.sold_price, item.shipping_charged_buyer, promoted_pct=item.promoted_pct)
+            ch = item.sale_channel or "ebay"
             if month not in monthly:
-                monthly[month] = {"month": month, "fvf": 0, "processing": 0, "promoted": 0}
-            monthly[month]["fvf"] += fees["fvf_amount"]
-            monthly[month]["processing"] += fees["processing_fee"]
-            monthly[month]["promoted"] += fees["promoted_fee"]
+                monthly[month] = {"month": month, "ebay": 0, "facebook_shipped": 0, "poshmark": 0, "no_fees": 0}
+            fee = _get_item_fees(item)
+            if ch == "ebay":
+                monthly[month]["ebay"] += fee
+            elif ch == "facebook_shipped":
+                monthly[month]["facebook_shipped"] += fee
+            elif ch == "poshmark":
+                monthly[month]["poshmark"] += fee
+            else:
+                monthly[month]["no_fees"] += 0  # Kijiji, FB Local, Other = $0
 
     data = sorted(monthly.values(), key=lambda x: x["month"])
     for d in data:
-        d["fvf"] = round(d["fvf"], 2)
-        d["processing"] = round(d["processing"], 2)
-        d["promoted"] = round(d["promoted"], 2)
+        d["ebay"] = round(d["ebay"], 2)
+        d["facebook_shipped"] = round(d["facebook_shipped"], 2)
+        d["poshmark"] = round(d["poshmark"], 2)
+        d["no_fees"] = round(d["no_fees"], 2)
     return data
 
 
 @router.get("/charts/profit-per-auction")
 def get_profit_per_auction(db: Session = Depends(get_db)):
-    """Profit per auction session (scatter plot data)."""
     auctions = db.query(Auction).all()
     result = []
     for a in auctions:
@@ -166,22 +211,19 @@ def get_profit_per_auction(db: Session = Depends(get_db)):
         total_cost = sum(i.buy_cost_total for i in items)
         total_profit = sum(i.net_profit for i in items if i.net_profit is not None)
         result.append({
-            "auction_name": a.name,
-            "date": a.date,
-            "total_cost": round(total_cost, 2),
-            "total_profit": round(total_profit, 2),
+            "auction_name": a.name, "date": a.date,
+            "total_cost": round(total_cost, 2), "total_profit": round(total_profit, 2),
             "item_count": len(items),
         })
     return result
 
 
 @router.get("/charts/cumulative-profit")
-def get_cumulative_profit(db: Session = Depends(get_db)):
-    """Cumulative profit over time."""
-    items = db.query(Item).join(Auction).filter(
-        Item.status == "sold", Item.net_profit.isnot(None)
-    ).order_by(Auction.date).all()
-
+def get_cumulative_profit(channel: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(Item).join(Auction).filter(Item.status == "sold", Item.net_profit.isnot(None))
+    if channel and channel != "all":
+        query = query.filter(Item.sale_channel == channel)
+    items = query.order_by(Auction.date).all()
     cumulative = 0
     data = []
     for i in items:

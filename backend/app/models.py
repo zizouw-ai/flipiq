@@ -37,6 +37,8 @@ class Item(Base):
     promoted_pct = Column(Float, default=0.0)
     net_profit = Column(Float, nullable=True)
     roi_pct = Column(Float, nullable=True)
+    sale_channel = Column(String, default="ebay")  # ebay | facebook_local | facebook_shipped | poshmark | kijiji | other
+    fb_sale_type = Column(String, nullable=True)  # local | shipped — only for facebook channels
     notes = Column(Text, default="")
 
     auction = relationship("Auction", back_populates="items")

@@ -39,6 +39,7 @@ class Mode1Request(BaseModel):
     top_rated: bool = False
     below_standard: bool = False
     insertion_fee: bool = False
+    sale_channel: str = "ebay"
 
 
 class Mode2Request(BaseModel):
@@ -54,6 +55,7 @@ class Mode2Request(BaseModel):
     top_rated: bool = False
     below_standard: bool = False
     insertion_fee: bool = False
+    sale_channel: str = "ebay"
 
 
 class Mode3Request(BaseModel):
@@ -72,6 +74,7 @@ class Mode3Request(BaseModel):
     top_rated: bool = False
     below_standard: bool = False
     insertion_fee: bool = False
+    sale_channel: str = "ebay"
 
 
 class Mode4Request(BaseModel):
@@ -103,6 +106,7 @@ class Mode5Request(BaseModel):
     below_standard: bool = False
     insertion_fee: bool = False
     num_points: int = 50
+    sale_channel: str = "ebay"
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +125,8 @@ class ItemCreate(BaseModel):
     shipping_cost_actual: float = 0.0
     shipping_charged_buyer: float = 0.0
     promoted_pct: float = 0.0
+    sale_channel: str = "ebay"
+    fb_sale_type: Optional[str] = None
     notes: str = ""
 
 
@@ -136,6 +142,8 @@ class ItemUpdate(BaseModel):
     shipping_cost_actual: Optional[float] = None
     shipping_charged_buyer: Optional[float] = None
     promoted_pct: Optional[float] = None
+    sale_channel: Optional[str] = None
+    fb_sale_type: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -156,6 +164,8 @@ class ItemResponse(BaseModel):
     promoted_pct: float
     net_profit: Optional[float]
     roi_pct: Optional[float]
+    sale_channel: str = "ebay"
+    fb_sale_type: Optional[str] = None
     notes: str
 
     class Config:

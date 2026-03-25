@@ -9,6 +9,17 @@ async function request(url, options = {}) {
   return res.json();
 }
 
+export const CHANNELS = [
+  { value: 'ebay', label: 'eBay', color: '#3b82f6' },
+  { value: 'facebook_local', label: 'Facebook Marketplace – Local Pickup', color: '#22c55e' },
+  { value: 'facebook_shipped', label: 'Facebook Marketplace – Shipped', color: '#f97316' },
+  { value: 'poshmark', label: 'Poshmark', color: '#ec4899' },
+  { value: 'kijiji', label: 'Kijiji', color: '#a78bfa' },
+  { value: 'other', label: 'Other (no fees)', color: '#64748b' },
+];
+
+export const CHANNEL_MAP = Object.fromEntries(CHANNELS.map(c => [c.value, c]));
+
 export const api = {
   // Calculator
   getCategories: () => request('/calculator/categories'),
@@ -37,12 +48,19 @@ export const api = {
     const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v)).toString();
     return request(`/dashboard/kpis${qs ? '?' + qs : ''}`);
   },
-  getMonthlyChart: () => request('/dashboard/charts/monthly'),
+  getChannelSummary: () => request('/dashboard/charts/by-channel'),
+  getMonthlyChart: (channel) => {
+    const qs = channel && channel !== 'all' ? `?channel=${channel}` : '';
+    return request(`/dashboard/charts/monthly${qs}`);
+  },
   getRoiByCategory: () => request('/dashboard/charts/roi-by-category'),
   getBestWorst: () => request('/dashboard/charts/best-worst'),
   getFeeBreakdown: () => request('/dashboard/charts/fee-breakdown'),
   getProfitPerAuction: () => request('/dashboard/charts/profit-per-auction'),
-  getCumulativeProfit: () => request('/dashboard/charts/cumulative-profit'),
+  getCumulativeProfit: (channel) => {
+    const qs = channel && channel !== 'all' ? `?channel=${channel}` : '';
+    return request(`/dashboard/charts/cumulative-profit${qs}`);
+  },
 
   // Settings
   getSettings: () => request('/settings/'),

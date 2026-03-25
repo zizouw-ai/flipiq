@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api } from '../api';
+import { useState, useEffect } from 'react';
+import { api, CHANNELS, CHANNEL_MAP } from '../api';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
@@ -15,6 +15,8 @@ const MODES = [
 function fmt(v) { return v !== null && v !== undefined ? `$${Number(v).toFixed(2)}` : '—'; }
 function pct(v) { return v !== null && v !== undefined ? `${Number(v).toFixed(2)}%` : '—'; }
 
+const NO_AD_CHANNELS = ['facebook_local', 'facebook_shipped', 'poshmark', 'kijiji', 'other'];
+
 export default function Calculator() {
   const [mode, setMode] = useState(1);
   const [categories, setCategories] = useState([]);
@@ -29,6 +31,7 @@ export default function Calculator() {
     insertion_fee: false, target_profit_dollar: '', target_profit_pct: '',
     sold_price: '', total_hammer_price: '', num_items: '2',
     per_item_sell_price: '', sell_price: '',
+    sale_channel: 'ebay',
   });
 
   const [profitType, setProfitType] = useState('dollar');
@@ -39,8 +42,11 @@ export default function Calculator() {
   }, []);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
   const num = (v) => v === '' ? undefined : parseFloat(v);
+  const ch = form.sale_channel;
+  const isEbay = ch === 'ebay';
+  const noFeeChannel = ch === 'kijiji' || ch === 'facebook_local';
+  const isMode4Disabled = NO_AD_CHANNELS.includes(ch);
 
   const calculate = async () => {
     setLoading(true);
@@ -56,6 +62,7 @@ export default function Calculator() {
         top_rated: form.top_rated,
         below_standard: form.below_standard,
         insertion_fee: form.insertion_fee,
+        sale_channel: ch,
       };
 
       if (mode === 1) {
@@ -105,16 +112,24 @@ export default function Calculator() {
       <h1 className="text-3xl font-bold mb-1 bg-gradient-to-r from-brand-400 to-accent-400 bg-clip-text text-transparent">
         Pricing Calculator
       </h1>
-      <p className="text-surface-400 text-sm mb-6">Calculate optimal eBay sell prices from Encore Auction buys</p>
+      <p className="text-surface-400 text-sm mb-6">Calculate optimal sell prices across platforms</p>
 
       {/* Mode Selector */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2" id="mode-selector">
         {MODES.map(m => (
-          <button key={m.id} onClick={() => { setMode(m.id); setResult(null); }}
+          <button key={m.id}
+            onClick={() => {
+              if (m.id === 4 && isMode4Disabled) return;
+              setMode(m.id); setResult(null);
+            }}
+            disabled={m.id === 4 && isMode4Disabled}
+            title={m.id === 4 && isMode4Disabled ? `Ad spend not applicable on ${CHANNEL_MAP[ch]?.label}` : ''}
             className={`px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-              mode === m.id
-                ? 'bg-brand-600/20 text-brand-400 border border-brand-500/30 shadow-lg shadow-brand-500/10'
-                : 'glass-card text-surface-400 hover:text-surface-200 cursor-pointer'
+              m.id === 4 && isMode4Disabled
+                ? 'opacity-40 cursor-not-allowed glass-card text-surface-500'
+                : mode === m.id
+                  ? 'bg-brand-600/20 text-brand-400 border border-brand-500/30 shadow-lg shadow-brand-500/10'
+                  : 'glass-card text-surface-400 hover:text-surface-200 cursor-pointer'
             }`}>
             <div className="font-semibold">{m.label}</div>
             <div className="text-xs opacity-60 mt-0.5">{m.desc}</div>
@@ -126,6 +141,37 @@ export default function Calculator() {
         {/* Input Panel */}
         <div className="glass-card p-6 lg:col-span-1">
           <h2 className="text-lg font-semibold text-surface-200 mb-4">📥 Inputs</h2>
+
+          {/* Channel Selector — TOP OF INPUTS */}
+          <Label text="Selling On" />
+          <select value={ch} onChange={e => { set('sale_channel', e.target.value); setResult(null); }}
+            className="input-field mb-3" id="channel-select">
+            {CHANNELS.map(c => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+
+          {/* Channel Info Banner */}
+          {ch === 'kijiji' && (
+            <div className="bg-success-400/10 border border-success-400/20 rounded-xl p-3 mb-4 text-sm text-success-400">
+              🟢 Kijiji = zero overhead. Every dollar above buy cost is pure profit.
+            </div>
+          )}
+          {ch === 'facebook_local' && (
+            <div className="bg-success-400/10 border border-success-400/20 rounded-xl p-3 mb-4 text-sm text-success-400">
+              🟢 Local cash sale — no fees, no shipping
+            </div>
+          )}
+          {ch === 'facebook_shipped' && (
+            <div className="bg-warning-400/10 border border-warning-400/20 rounded-xl p-3 mb-4 text-sm text-warning-400">
+              📦 Fee: 10% of sale price (min $0.80)
+            </div>
+          )}
+          {ch === 'poshmark' && (
+            <div className="bg-danger-400/10 border border-danger-400/20 rounded-xl p-3 mb-4 text-sm text-danger-400">
+              👜 Fee: 20% if ≥ C$20 / flat C$3.95 if under C$20. Shipping: Poshmark provides prepaid label to buyer.
+            </div>
+          )}
 
           {/* Hammer Price (modes 1,2,4,5) or Total Hammer (mode 3) */}
           {mode === 3 ? (
@@ -144,7 +190,6 @@ export default function Calculator() {
             </>
           )}
 
-          {/* Sold price (mode 2) or Sell price (mode 4) */}
           {mode === 2 && (
             <>
               <Label text="Sold Price" />
@@ -158,42 +203,55 @@ export default function Calculator() {
             </>
           )}
 
-          {/* Payment Method Toggle */}
+          {/* Payment Method */}
           <Label text="Payment Method" />
           <div className="flex gap-2 mb-4" id="payment-toggle">
-            <ToggleBtn active={form.payment_method === 'etransfer'} onClick={() => set('payment_method', 'etransfer')}>
-              E-Transfer
-            </ToggleBtn>
-            <ToggleBtn active={form.payment_method === 'credit_card'} onClick={() => set('payment_method', 'credit_card')}>
-              Credit Card
-            </ToggleBtn>
+            <ToggleBtn active={form.payment_method === 'etransfer'} onClick={() => set('payment_method', 'etransfer')}>E-Transfer</ToggleBtn>
+            <ToggleBtn active={form.payment_method === 'credit_card'} onClick={() => set('payment_method', 'credit_card')}>Credit Card</ToggleBtn>
           </div>
 
           {mode !== 5 && (
             <>
-              <Label text="Your Shipping Cost" />
-              <Input value={form.shipping_cost_actual} onChange={v => set('shipping_cost_actual', v)} prefix="$" id="ship-cost" />
-              <Label text="Buyer Shipping Charge" />
-              <Input value={form.buyer_shipping_charge} onChange={v => set('buyer_shipping_charge', v)} prefix="$" id="buyer-ship" />
-              <Label text="Promoted Listing %" />
-              <Input value={form.promoted_pct} onChange={v => set('promoted_pct', v)} suffix="%" id="promoted-pct" />
+              <Label text={noFeeChannel ? 'Shipping Cost (locked)' : 'Your Shipping Cost'} />
+              <Input value={noFeeChannel ? '0' : form.shipping_cost_actual}
+                onChange={v => !noFeeChannel && set('shipping_cost_actual', v)}
+                prefix="$" id="ship-cost" disabled={noFeeChannel} />
+              {noFeeChannel && <p className="text-xs text-success-400 mb-2">Local pickup only</p>}
+
+              {isEbay && (
+                <>
+                  <Label text="Buyer Shipping Charge" />
+                  <Input value={form.buyer_shipping_charge} onChange={v => set('buyer_shipping_charge', v)} prefix="$" id="buyer-ship" />
+                </>
+              )}
+              {isEbay && (
+                <>
+                  <Label text="Promoted Listing %" />
+                  <Input value={form.promoted_pct} onChange={v => set('promoted_pct', v)} suffix="%" id="promoted-pct" />
+                </>
+              )}
+              {ch === 'poshmark' && (
+                <p className="text-xs text-surface-400 mb-2">Shipping: $0.00 — Poshmark provides prepaid label to buyer</p>
+              )}
             </>
           )}
 
-          {/* Category */}
-          <Label text="eBay Category" />
-          <select value={form.category} onChange={e => set('category', e.target.value)}
-            className="input-field mb-4" id="category-select">
-            {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-          </select>
-
-          {/* Toggles */}
-          <div className="flex flex-col gap-2 mb-4">
-            <Toggle label="eBay Store" checked={form.has_store} onChange={v => set('has_store', v)} id="toggle-store" />
-            <Toggle label="Top Rated Seller" checked={form.top_rated} onChange={v => set('top_rated', v)} id="toggle-top-rated" />
-            <Toggle label="Below Standard" checked={form.below_standard} onChange={v => set('below_standard', v)} id="toggle-below" />
-            <Toggle label="Insertion Fee ($0.35)" checked={form.insertion_fee} onChange={v => set('insertion_fee', v)} id="toggle-insertion" />
-          </div>
+          {/* Category — only for eBay */}
+          {isEbay && (
+            <>
+              <Label text="eBay Category" />
+              <select value={form.category} onChange={e => set('category', e.target.value)}
+                className="input-field mb-4" id="category-select">
+                {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              </select>
+              <div className="flex flex-col gap-2 mb-4">
+                <Toggle label="eBay Store" checked={form.has_store} onChange={v => set('has_store', v)} id="toggle-store" />
+                <Toggle label="Top Rated Seller" checked={form.top_rated} onChange={v => set('top_rated', v)} id="toggle-top-rated" />
+                <Toggle label="Below Standard" checked={form.below_standard} onChange={v => set('below_standard', v)} id="toggle-below" />
+                <Toggle label="Insertion Fee ($0.35)" checked={form.insertion_fee} onChange={v => set('insertion_fee', v)} id="toggle-insertion" />
+              </div>
+            </>
+          )}
 
           {/* Target profit (modes 1, 3, 4) */}
           {[1, 3, 4].includes(mode) && (
@@ -210,7 +268,21 @@ export default function Calculator() {
             </>
           )}
 
-          <button onClick={calculate} disabled={loading}
+          {/* Platform fee preview */}
+          {!isEbay && ch !== 'other' && (
+            <div className="bg-surface-800/50 rounded-xl p-3 mt-3 text-xs text-surface-400">
+              <span className="font-medium text-surface-300">Platform Fee: </span>
+              {noFeeChannel ? (
+                <span className="text-success-400 font-semibold">$0.00 — No fees</span>
+              ) : ch === 'facebook_shipped' ? (
+                <span className="text-warning-400">10% of sale price (min $0.80)</span>
+              ) : ch === 'poshmark' ? (
+                <span className="text-danger-400">20% ≥ C$20 / flat C$3.95 under C$20</span>
+              ) : null}
+            </div>
+          )}
+
+          <button onClick={calculate} disabled={loading || (mode === 4 && isMode4Disabled)}
             className="btn-primary w-full mt-4" id="calculate-btn">
             {loading ? 'Calculating...' : '⚡ Calculate'}
           </button>
@@ -220,6 +292,21 @@ export default function Calculator() {
         <div className="lg:col-span-2 space-y-6">
           {result && !result.error && (
             <>
+              {/* Channel fees result for non-eBay */}
+              {result.channel_fees && (
+                <div className="glass-card p-6 animate-fade-in">
+                  <h2 className="text-lg font-semibold text-surface-200 mb-4">
+                    🏷️ {CHANNEL_MAP[result.channel]?.label || result.channel} Fee Breakdown
+                  </h2>
+                  <div className="space-y-2">
+                    <Row label="Platform Fee" value={fmt(result.channel_fees.platform_fee)}
+                      highlight={result.channel_fees.platform_fee === 0} />
+                    <Row label="Shipping Deduction" value={fmt(result.channel_fees.shipping_deduction)} />
+                    <Row label="Channel" value={CHANNEL_MAP[result.channel]?.label} />
+                  </div>
+                </div>
+              )}
+
               {/* Mode 5 Slider */}
               {mode === 5 && sliderData && (
                 <div className="glass-card p-6 animate-fade-in">
@@ -232,7 +319,7 @@ export default function Calculator() {
                       <KpiMini label="Sell Price" value={fmt(currentSliderPoint.sell_price)} />
                       <KpiMini label="Net Profit" value={fmt(currentSliderPoint.net_profit)} color={currentSliderPoint.net_profit >= 0 ? 'text-success-400' : 'text-danger-400'} />
                       <KpiMini label="ROI" value={pct(currentSliderPoint.roi_pct)} />
-                      <KpiMini label="Max Ad %" value={pct(currentSliderPoint.max_ad_pct)} />
+                      <KpiMini label="Max Ad %" value={isEbay ? pct(currentSliderPoint.max_ad_pct) : 'N/A'} />
                     </div>
                   )}
                   <ResponsiveContainer width="100%" height={300}>
@@ -246,7 +333,7 @@ export default function Calculator() {
                       <Line type="monotone" dataKey="net_profit" name="Net Profit $" stroke="#22c55e" strokeWidth={2} dot={false} />
                       <Line type="monotone" dataKey="roi_pct" name="ROI %" stroke="#3b82f6" strokeWidth={2} dot={false} />
                       <Line type="monotone" dataKey="margin_pct" name="Margin %" stroke="#a78bfa" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="max_ad_pct" name="Max Ad %" stroke="#fbbf24" strokeWidth={2} dot={false} />
+                      {isEbay && <Line type="monotone" dataKey="max_ad_pct" name="Max Ad %" stroke="#fbbf24" strokeWidth={2} dot={false} />}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -365,12 +452,13 @@ function Label({ text }) {
   return <label className="block text-xs font-medium text-surface-400 mb-1 mt-3">{text}</label>;
 }
 
-function Input({ value, onChange, prefix, suffix, id }) {
+function Input({ value, onChange, prefix, suffix, id, disabled }) {
   return (
     <div className="relative mb-1">
       {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-500 text-sm">{prefix}</span>}
       <input type="number" value={value} onChange={e => onChange(e.target.value)} id={id}
-        className={`input-field ${prefix ? 'pl-7' : ''} ${suffix ? 'pr-7' : ''}`} />
+        disabled={disabled}
+        className={`input-field ${prefix ? 'pl-7' : ''} ${suffix ? 'pr-7' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} />
       {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 text-sm">{suffix}</span>}
     </div>
   );
@@ -393,6 +481,15 @@ function ToggleBtn({ active, onClick, children }) {
     <button onClick={onClick} className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
       active ? 'bg-brand-600/20 text-brand-400 border border-brand-500/30' : 'bg-surface-700/30 text-surface-400 border border-transparent hover:text-surface-200'
     }`}>{children}</button>
+  );
+}
+
+function Row({ label, value, highlight }) {
+  return (
+    <div className="flex justify-between py-1.5 text-surface-300">
+      <span className="text-sm">{label}</span>
+      <span className={`text-sm font-medium ${highlight ? 'text-success-400' : ''}`}>{value}</span>
+    </div>
   );
 }
 

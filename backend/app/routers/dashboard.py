@@ -78,6 +78,35 @@ def get_kpis(
                 pass
     avg_days = (sum(days_list) / len(days_list)) if days_list else 0
 
+    # Feature 1.8 — Goal progress
+    from app.models import UserSetting
+    import calendar
+    goal_setting = db.query(UserSetting).filter(UserSetting.key == "monthly_profit_goal_cad").first()
+    goal_amount = float(goal_setting.value) if goal_setting else 0.0
+    goal_progress = None
+    if goal_amount > 0:
+        from datetime import datetime
+        now = datetime.now()
+        current_month = now.strftime("%Y-%m")
+        month_items = [i for i in sold_items if i.sell_date and i.sell_date.startswith(current_month)]
+        month_profit = sum(i.net_profit for i in month_items if i.net_profit is not None)
+        days_in_month = calendar.monthrange(now.year, now.month)[1]
+        days_left = days_in_month - now.day
+        remaining = max(0, goal_amount - month_profit)
+        per_day = remaining / days_left if days_left > 0 else remaining
+        pct = round(month_profit / goal_amount * 100, 1) if goal_amount > 0 else 0
+        goal_progress = {
+            "enabled": True,
+            "goal": goal_amount,
+            "current": round(month_profit, 2),
+            "pct": pct,
+            "remaining": round(remaining, 2),
+            "days_left": days_left,
+            "per_day_needed": round(per_day, 2),
+            "exceeded": month_profit >= goal_amount,
+            "overage": round(month_profit - goal_amount, 2) if month_profit > goal_amount else 0,
+        }
+
     return {
         "total_invested": round(total_invested, 2),
         "total_revenue": round(total_revenue, 2),
@@ -90,6 +119,7 @@ def get_kpis(
         "total_items": len(items),
         "sold_count": len(sold_items),
         "listed_count": len(listed_items),
+        "goal_progress": goal_progress,
     }
 
 

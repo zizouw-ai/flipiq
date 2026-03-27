@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
 from app.routers import calculator, auctions, dashboard, settings
+from app.routers import auction_houses, shipping_presets, templates, exports
+from app.currency import router as currency_router
 
 
 @asynccontextmanager
@@ -14,8 +16,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="FlipIQ",
-    description="eBay Reseller Profit & Pricing Calculator API",
-    version="1.0.0",
+    description="Multi-Channel Reseller Profit & Pricing Calculator API",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -31,8 +33,13 @@ app.include_router(calculator.router)
 app.include_router(auctions.router)
 app.include_router(dashboard.router)
 app.include_router(settings.router)
+app.include_router(auction_houses.router)
+app.include_router(shipping_presets.router)
+app.include_router(templates.router)
+app.include_router(exports.router)
+app.include_router(currency_router)
 
 
 @app.get("/")
 def root():
-    return {"app": "FlipIQ", "version": "1.0.0", "status": "running"}
+    return {"app": "FlipIQ", "version": "2.0.0", "status": "running"}

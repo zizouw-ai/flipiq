@@ -9,6 +9,20 @@ async function request(url, options = {}) {
   return res.json();
 }
 
+async function downloadFile(url) {
+  const res = await fetch(`${API}${url}`);
+  if (!res.ok) throw new Error(`Download Error: ${res.status}`);
+  const blob = await res.blob();
+  const disposition = res.headers.get('content-disposition') || '';
+  const match = disposition.match(/filename="(.+)"/);
+  const filename = match ? match[1] : 'export.xlsx';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export const CHANNELS = [
   { value: 'ebay', label: 'eBay', color: '#3b82f6' },
   { value: 'facebook_local', label: 'Facebook Marketplace – Local Pickup', color: '#22c55e' },
@@ -66,4 +80,37 @@ export const api = {
   getSettings: () => request('/settings/'),
   updateSetting: (key, value) => request('/settings/', { method: 'PUT', body: JSON.stringify({ key, value }) }),
   updateSettingsBulk: (settings) => request('/settings/bulk', { method: 'PUT', body: JSON.stringify(settings) }),
+
+  // Auction Houses (Feature 1.1)
+  listAuctionHouses: () => request('/auction-houses/'),
+  createAuctionHouse: (data) => request('/auction-houses/', { method: 'POST', body: JSON.stringify(data) }),
+  updateAuctionHouse: (id, data) => request(`/auction-houses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAuctionHouse: (id) => request(`/auction-houses/${id}`, { method: 'DELETE' }),
+  setDefaultAuctionHouse: (id) => request(`/auction-houses/${id}/set-default`, { method: 'PUT' }),
+  previewBuyCost: (data) => request('/auction-houses/preview', { method: 'POST', body: JSON.stringify(data) }),
+  getProvinces: () => request('/auction-houses/provinces'),
+
+  // Shipping Presets (Feature 1.3)
+  listShippingPresets: () => request('/shipping-presets/'),
+  createShippingPreset: (data) => request('/shipping-presets/', { method: 'POST', body: JSON.stringify(data) }),
+  updateShippingPreset: (id, data) => request(`/shipping-presets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteShippingPreset: (id) => request(`/shipping-presets/${id}`, { method: 'DELETE' }),
+
+  // Item Templates (Feature 1.4)
+  listTemplates: () => request('/templates/'),
+  createTemplate: (data) => request('/templates/', { method: 'POST', body: JSON.stringify(data) }),
+  updateTemplate: (id, data) => request(`/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTemplate: (id) => request(`/templates/${id}`, { method: 'DELETE' }),
+
+  // Currency (Feature 1.7)
+  getCurrencyRate: () => request('/currency/rate'),
+
+  // Export (Feature 1.6)
+  exportAuction: (id) => downloadFile(`/export/auction/${id}`),
+  exportInventory: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v)).toString();
+    return downloadFile(`/export/inventory${qs ? '?' + qs : ''}`);
+  },
+  exportDashboardSummary: (year) => downloadFile(`/export/dashboard/summary?year=${year}`),
+  exportTaxSummary: (year) => downloadFile(`/export/tax-summary?year=${year}`),
 };

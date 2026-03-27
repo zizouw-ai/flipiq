@@ -177,6 +177,7 @@ class AuctionCreate(BaseModel):
     date: str
     total_hammer: float = 0.0
     payment_method: str = "etransfer"
+    auction_house_config_id: Optional[int] = None
     notes: str = ""
 
 
@@ -185,6 +186,7 @@ class AuctionUpdate(BaseModel):
     date: Optional[str] = None
     total_hammer: Optional[float] = None
     payment_method: Optional[str] = None
+    auction_house_config_id: Optional[int] = None
     notes: Optional[str] = None
 
 
@@ -194,6 +196,7 @@ class AuctionResponse(BaseModel):
     date: str
     total_hammer: float
     payment_method: str
+    auction_house_config_id: Optional[int] = None
     notes: str
     created_at: Optional[datetime]
     items: List[ItemResponse] = []
@@ -208,6 +211,7 @@ class AuctionListResponse(BaseModel):
     date: str
     total_hammer: float
     payment_method: str
+    auction_house_config_id: Optional[int] = None
     notes: str
     created_at: Optional[datetime]
     item_count: int = 0

@@ -17,6 +17,9 @@ DEFAULT_SETTINGS = {
     "below_standard": "false",
     "currency": "CAD",
     "default_promoted_pct": "0",
+    "province": "ON",
+    "monthly_profit_goal_cad": "0",
+    "default_target_margin_pct": "30",
 }
 
 

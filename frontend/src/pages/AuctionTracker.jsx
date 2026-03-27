@@ -188,10 +188,16 @@ export default function AuctionTracker() {
             <div className="animate-fade-in">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-surface-200">{selectedAuction.name}</h2>
-                <button onClick={() => { resetItemForm(); setEditItem(null); setShowItemForm(!showItemForm); }}
-                  className="btn-primary text-sm" id="add-item-btn">
-                  + Add Item
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => api.exportAuction(selectedAuction.id)}
+                    className="px-3 py-2 rounded-lg text-sm font-medium bg-surface-700/50 border border-surface-600/30 text-surface-300 hover:text-surface-100 hover:bg-surface-600/50 transition-all" id="export-auction-btn">
+                    📥 Export
+                  </button>
+                  <button onClick={() => { resetItemForm(); setEditItem(null); setShowItemForm(!showItemForm); }}
+                    className="btn-primary text-sm" id="add-item-btn">
+                    + Add Item
+                  </button>
+                </div>
               </div>
 
               {/* Item Form */}

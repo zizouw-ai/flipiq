@@ -85,7 +85,7 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       {kpis && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <KpiCard label="Total Invested" value={fmt(kpis.total_invested)} icon="💰" />
           <KpiCard label="Total Revenue" value={fmt(kpis.total_revenue)} icon="📈" />
           <KpiCard label="Net Profit" value={fmt(kpis.total_profit)} icon="🎯"
@@ -98,6 +98,45 @@ export default function Dashboard() {
           <KpiCard label="Avg Days to Sell" value={`${kpis.avg_days_to_sell} days`} icon="⏱️" />
         </div>
       )}
+
+      {/* Goal Progress (Feature 1.8) */}
+      {kpis?.goal_progress && (
+        <div className={`glass-card p-5 mb-6 border ${
+          kpis.goal_progress.exceeded ? 'border-success-400/30 bg-success-600/5' : 'border-brand-500/20'
+        }`} id="goal-progress-card">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{kpis.goal_progress.exceeded ? '🏆' : '🎯'}</span>
+              <span className="text-sm font-semibold text-surface-200">Monthly Profit Goal</span>
+            </div>
+            <span className={`text-lg font-bold ${kpis.goal_progress.exceeded ? 'text-success-400' : 'text-brand-400'}`}>
+              {kpis.goal_progress.pct}%
+            </span>
+          </div>
+          <div className="w-full h-3 bg-surface-700 rounded-full overflow-hidden mb-3">
+            <div className={`h-full rounded-full transition-all duration-1000 ease-out ${
+              kpis.goal_progress.exceeded ? 'bg-gradient-to-r from-success-500 to-success-400' : 'bg-gradient-to-r from-brand-600 to-brand-400'
+            }`} style={{ width: `${Math.min(kpis.goal_progress.pct, 100)}%` }} />
+          </div>
+          <div className="flex items-center justify-between text-xs text-surface-400">
+            <span>{fmt(kpis.goal_progress.current)} / {fmt(kpis.goal_progress.goal)}</span>
+            {kpis.goal_progress.exceeded
+              ? <span className="text-success-400">🎉 Goal exceeded by {fmt(kpis.goal_progress.overage)}</span>
+              : <span>{fmt(kpis.goal_progress.remaining)} remaining · {kpis.goal_progress.days_left}d left · {fmt(kpis.goal_progress.per_day_needed)}/day needed</span>
+            }
+          </div>
+        </div>
+      )}
+
+      {/* Export Buttons (Feature 1.6) */}
+      <div className="flex gap-3 mb-8">
+        <button onClick={() => api.exportDashboardSummary(2026)} className="btn-primary !py-2 !text-xs" id="export-summary-btn">
+          📊 Export P&L Summary
+        </button>
+        <button onClick={() => api.exportTaxSummary(2026)} className="btn-primary !py-2 !text-xs" id="export-tax-btn">
+          🧾 Export Tax Summary
+        </button>
+      </div>
 
       {/* Channel Performance Cards */}
       {channelData.length > 0 && (

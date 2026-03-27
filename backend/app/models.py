@@ -12,10 +12,12 @@ class Auction(Base):
     date = Column(String, nullable=False)
     total_hammer = Column(Float, default=0.0)
     payment_method = Column(String, default="etransfer")  # etransfer | credit_card
+    auction_house_config_id = Column(Integer, ForeignKey("auction_house_configs.id"), nullable=True)
     notes = Column(Text, default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     items = relationship("Item", back_populates="auction", cascade="all, delete-orphan")
+    auction_house_config = relationship("AuctionHouseConfig", back_populates="auctions")
 
 
 class Item(Base):
@@ -60,3 +62,66 @@ class UserSetting(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, unique=True, nullable=False, index=True)
     value = Column(Text, nullable=False)
+
+
+# ── Feature 1.1 — Auction House Configs ────────────────────────────────────
+
+class AuctionHouseConfig(Base):
+    __tablename__ = "auction_house_configs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=True)         # NULL = system default
+    name = Column(String, nullable=False)
+    buyer_premium_pct = Column(Float, default=0.0)
+    handling_fee_flat = Column(Float, default=0.0)
+    handling_fee_pct = Column(Float, default=0.0)
+    handling_fee_mode = Column(String, default="flat")   # flat | pct | none
+    tax_pct = Column(Float, default=13.0)
+    tax_applies_to = Column(String, default="subtotal")  # subtotal | hammer_only | all
+    credit_card_surcharge_pct = Column(Float, default=0.0)
+    online_bidding_fee_pct = Column(Float, default=0.0)
+    payment_methods = Column(String, default="etransfer,credit_card,cash")
+    lot_handling = Column(String, default="per_item")    # per_item | per_lot | none
+    currency = Column(String, default="CAD")
+    notes = Column(Text, default="")
+    is_default = Column(Integer, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    auctions = relationship("Auction", back_populates="auction_house_config")
+
+
+# ── Feature 1.3 — Shipping Presets ──────────────────────────────────────────
+
+class ShippingPreset(Base):
+    __tablename__ = "shipping_presets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=True)
+    name = Column(String, nullable=False)
+    carrier = Column(String, default="")
+    max_weight_kg = Column(Float, nullable=True)
+    max_length_cm = Column(Float, nullable=True)
+    cost_cad = Column(Float, nullable=False)
+    notes = Column(Text, default="")
+    is_default = Column(Integer, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+# ── Feature 1.4 — Item Templates ───────────────────────────────────────────
+
+class ItemTemplate(Base):
+    __tablename__ = "item_templates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=True)
+    name = Column(String, nullable=False)
+    category = Column(String, default="")
+    sale_channel = Column(String, default="ebay")
+    shipping_preset_id = Column(Integer, nullable=True)
+    buyer_shipping_charge = Column(Float, default=0.0)
+    promoted_listing_pct = Column(Float, default=0.0)
+    target_margin_pct = Column(Float, default=0.0)
+    target_profit_flat = Column(Float, default=0.0)
+    target_mode = Column(String, default="pct")  # pct | flat
+    notes = Column(Text, default="")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -1,16 +1,8 @@
-"""
-FlipIQ — Complete pytest test suite.
-Tests all Encore cost formulas, eBay fee formulas, all 5 pricing modes,
-edge cases, and all API endpoints.
-"""
 import pytest
 import json
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.main import app
-from app.database import Base, get_db
 from app.calculators import (
     calculate_encore_cost,
     calculate_ebay_fees,
@@ -24,29 +16,7 @@ from app.calculators import (
     EBAY_CATEGORIES,
 )
 
-# --- Test DB setup ---
-TEST_DB_URL = "sqlite:///./test_flipiq.db"
-engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 # ============================================================================

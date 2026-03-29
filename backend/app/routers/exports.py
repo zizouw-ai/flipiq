@@ -62,8 +62,8 @@ def _make_xlsx(headers, rows, sheet_name="Sheet1"):
 
 
 ITEM_EXPORT_COLUMNS = [
-    "Item Name", "Category", "Hammer Price", "Total Buy Cost",
-    "Sale Channel", "List Price", "Sold Price", "Date Sold",
+    "Item Name", "Category", "Lot #", "Hammer Price", "Total Buy Cost",
+    "Sale Channel", "Platform Sold On", "List Price", "Sold Price", "Est. Resale", "Date Sold",
     "Your Shipping Cost", "Buyer Shipping Charge", "Promoted Listing %",
     "Total Platform Fees", "Net Profit", "ROI %",
     "Status", "Notes",
@@ -73,8 +73,9 @@ ITEM_EXPORT_COLUMNS = [
 def _item_to_row(item):
     fees = _get_item_fees(item) if item.sold_price else 0.0
     return [
-        item.name, item.category, item.hammer_price, item.buy_cost_total,
-        item.sale_channel or "ebay", item.list_price, item.sold_price, item.sell_date,
+        item.name, item.category, item.lot_number, item.hammer_price, item.buy_cost_total,
+        item.sale_channel or "ebay", item.platform_sold_on or item.sale_channel or "ebay",
+        item.list_price, item.sold_price, item.estimated_resale, item.sell_date,
         item.shipping_cost_actual, item.shipping_charged_buyer, item.promoted_pct,
         round(fees, 2), item.net_profit, item.roi_pct,
         item.status, item.notes,

@@ -127,6 +127,9 @@ class ItemCreate(BaseModel):
     promoted_pct: float = 0.0
     sale_channel: str = "ebay"
     fb_sale_type: Optional[str] = None
+    lot_number: Optional[str] = None
+    estimated_resale: Optional[float] = None
+    platform_sold_on: Optional[str] = None
     notes: str = ""
 
 
@@ -144,6 +147,9 @@ class ItemUpdate(BaseModel):
     promoted_pct: Optional[float] = None
     sale_channel: Optional[str] = None
     fb_sale_type: Optional[str] = None
+    lot_number: Optional[str] = None
+    estimated_resale: Optional[float] = None
+    platform_sold_on: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -166,6 +172,9 @@ class ItemResponse(BaseModel):
     roi_pct: Optional[float]
     sale_channel: str = "ebay"
     fb_sale_type: Optional[str] = None
+    lot_number: Optional[str] = None
+    estimated_resale: Optional[float] = None
+    platform_sold_on: Optional[str] = None
     notes: str
 
     class Config:

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
 from app.routers import calculator, auctions, dashboard, settings
 from app.routers import auction_houses, shipping_presets, templates, exports
+from app.routers import items as items_router
 from app.currency import router as currency_router
 
 
@@ -47,6 +48,7 @@ app.include_router(shipping_presets.router)
 app.include_router(templates.router)
 app.include_router(exports.router)
 app.include_router(currency_router)
+app.include_router(items_router.router)
 
 
 @app.get("/")

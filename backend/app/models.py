@@ -41,6 +41,9 @@ class Item(Base):
     roi_pct = Column(Float, nullable=True)
     sale_channel = Column(String, default="ebay")  # ebay | facebook_local | facebook_shipped | poshmark | kijiji | other
     fb_sale_type = Column(String, nullable=True)  # local | shipped — only for facebook channels
+    lot_number = Column(String, nullable=True)  # Lot number from auction
+    estimated_resale = Column(Float, nullable=True)  # Estimated resale value
+    platform_sold_on = Column(String, nullable=True)  # Where actually sold (may differ from intended sale_channel)
     notes = Column(Text, default="")
 
     auction = relationship("Auction", back_populates="items")

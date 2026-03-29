@@ -1,0 +1,19 @@
+# Railway frontend service configuration
+# Deploy: railway up --service=flipiq-frontend
+
+[build]
+builder = "NIXPACKS"
+
+[build.nixpacks]
+# Build React app
+nodeVersion = "20"
+buildCommand = "npm install && npm run build"
+
+[deploy]
+# Serve static files from dist
+startCommand = "npx serve -s dist -l $PORT"
+restartPolicyType = "on_failure"
+
+[variables]
+NODE_ENV = "production"
+VITE_API_URL = "${{BACKEND_URL}}/api"

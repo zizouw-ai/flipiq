@@ -1,5 +1,5 @@
 # FlipIQ — Full Project Brief & Handoff Document
-**Last updated: March 28, 2026**
+**Last updated: March 29, 2026**
 **Owner: Ramzi — London, Ontario, Canada**
 **Purpose: Full context for any AI assistant to continue building this app**
 
@@ -111,12 +111,13 @@ The AI must update this section when a milestone is finished.
 - [x] 1.8 Monthly profit goal tracker
 - [x] 1.9 Profit recalculation on hammer price change
 
-### Phase 2 — Go Online (~C$5/mo) 🚧 IN PROGRESS
-- [x] 2.1 Deploy to Hetzner VPS (CX22) — deployment files ready, awaiting server provisioning
-- [x] 2.2 Install Coolify for auto-deploy on GitHub push — script ready
-- [x] 2.3 SSL via Let's Encrypt — script ready
-- [x] 2.4 Nightly SQLite backup to cloud storage — script ready
-- [ ] 2.5 Custom domain — awaiting deployment
+### Phase 2 — Go Online (Railway Hobby $5/mo) 🚧 IN PROGRESS
+- [x] 2.1 Deploy to Railway Hobby — railway.toml created, ready for railway up
+- [x] 2.2 Backend service with SQLite Volume at /data/flipiq.db — configured
+- [x] 2.3 Frontend static build service — railway.frontend.toml ready
+- [x] 2.4 CORS configured for Railway domains — auto-detects RAILWAY_STATIC_URL
+- [x] 2.5 Environment variables (VITE_API_URL) — api.js updated
+- [ ] 2.6 Custom domain (flipiq.ca) — awaiting deployment
 
 ### Phase 3 — SaaS Launch
 - [ ] 3.1 JWT auth (register / login / email verify / password reset)
@@ -336,6 +337,7 @@ Append one row per session. Never delete rows.
 | 2026-03-28 | v0.2.0  | Verified all Phase 1 features complete; updated brief; 164 tests passing | Claude |
 | 2026-03-28 | v0.3.0  | Phase 1 fully complete; version bump; deployment prep | Claude |
 | 2026-03-28 | v0.4.0  | Phase 2 deployment infrastructure complete; Docker, nginx, scripts ready | Claude |
+| 2026-03-29 | v0.5.0  | Switched to Railway deployment; railway.toml, CORS updates, RAILWAY_DEPLOY.md | Claude |
 
 ---
 

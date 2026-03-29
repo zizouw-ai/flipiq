@@ -21,9 +21,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+import os
+
+# CORS: Allow Railway domains + local dev
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+# Also allow any Railway app domain
+RAILWAY_DOMAIN = os.getenv("RAILWAY_STATIC_URL", "")
+if RAILWAY_DOMAIN:
+    CORS_ORIGINS.append(RAILWAY_DOMAIN)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

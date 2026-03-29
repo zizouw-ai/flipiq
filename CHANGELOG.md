@@ -1,5 +1,15 @@
 # FlipIQ Changelog
 
+## v0.5.0 — 2026-03-29
+- Switched deployment target to Railway ($5/month Hobby plan)
+- Created railway.toml for backend service with SQLite volume support
+- Created railway.frontend.toml for React static build
+- Updated CORS to auto-detect Railway domains via RAILWAY_STATIC_URL
+- Updated frontend api.js to use VITE_API_URL environment variable
+- Created RAILWAY_DEPLOY.md deployment guide
+- Created Procfile for alternative deployment method
+- Ready for Railway deployment
+
 ## v0.4.0 — 2026-03-28
 - Phase 2 deployment infrastructure complete
 - Added Docker setup (backend + frontend containers)

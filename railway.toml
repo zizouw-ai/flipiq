@@ -1,0 +1,21 @@
+# Railway deployment configuration for FlipIQ
+# Deploy: railway up
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.backend"
+
+[deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 10
+restartPolicyType = "on_failure"
+
+[mounts]
+# Railway Volume for SQLite persistence
+# Create via: railway volume add --mount-path /data
+/data = "/data"
+
+[variables]
+DATABASE_URL = "sqlite:///data/flipiq.db"
+PYTHONUNBUFFERED = "1"

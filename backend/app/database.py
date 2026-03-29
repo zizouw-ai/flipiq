@@ -47,6 +47,12 @@ def init_db():
     # Migrate: add new Product Profile columns to existing item_templates table
     _migrate_item_templates()
 
+    # Migrate: add new columns to items table
+    _migrate_items()
+
+    # Migrate: add new columns to auctions table
+    _migrate_auctions()
+
     # Seed default data
     db = SessionLocal()
     try:
@@ -77,4 +83,22 @@ def _migrate_item_templates():
         _safe_add_column(conn, "item_templates", "ebay_store_toggle", "INTEGER", 0)
         _safe_add_column(conn, "item_templates", "top_rated_toggle", "INTEGER", 0)
         _safe_add_column(conn, "item_templates", "insertion_fee_toggle", "INTEGER", 0)
+        conn.commit()
+
+
+def _migrate_items():
+    """Add new columns to items table if they don't exist."""
+    with engine.connect() as conn:
+        _safe_add_column(conn, "items", "sale_channel", "TEXT", "ebay")
+        _safe_add_column(conn, "items", "fb_sale_type", "TEXT", None)
+        _safe_add_column(conn, "items", "lot_number", "TEXT", None)
+        _safe_add_column(conn, "items", "estimated_resale", "REAL", None)
+        _safe_add_column(conn, "items", "platform_sold_on", "TEXT", None)
+        conn.commit()
+
+
+def _migrate_auctions():
+    """Add new columns to auctions table if they don't exist."""
+    with engine.connect() as conn:
+        _safe_add_column(conn, "auctions", "auction_house_config_id", "INTEGER", None)
         conn.commit()

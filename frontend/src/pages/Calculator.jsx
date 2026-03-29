@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api, CHANNELS, CHANNEL_MAP } from '../api';
+import ShippingCostField from '../components/ShippingCostField';
+import AlertBanner from '../components/AlertBanner';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
@@ -212,11 +214,19 @@ export default function Calculator() {
 
           {mode !== 5 && (
             <>
-              <Label text={noFeeChannel ? 'Shipping Cost (locked)' : 'Your Shipping Cost'} />
-              <Input value={noFeeChannel ? '0' : form.shipping_cost_actual}
-                onChange={v => !noFeeChannel && set('shipping_cost_actual', v)}
-                prefix="$" id="ship-cost" disabled={noFeeChannel} />
-              {noFeeChannel && <p className="text-xs text-success-400 mb-2">Local pickup only</p>}
+              {noFeeChannel ? (
+                <>
+                  <Label text="Shipping Cost (locked)" />
+                  <Input value="0" onChange={() => {}} prefix="$" id="ship-cost" disabled />
+                  <p className="text-xs text-success-400 mb-2">Local pickup only</p>
+                </>
+              ) : (
+                <>
+                  <ShippingCostField value={form.shipping_cost_actual}
+                    onChange={v => set('shipping_cost_actual', v)} />
+                  <div className="mb-4" />
+                </>
+              )}
 
               {isEbay && (
                 <>
@@ -369,6 +379,21 @@ export default function Calculator() {
                       color={result.profit.roi_pct >= 0 ? 'text-success-400' : 'text-danger-400'} />
                     <KpiMini label="Margin" value={pct(result.profit.margin_pct)} />
                   </div>
+
+                  {/* Alert Banner */}
+                  <div className="mt-4">
+                    <AlertBanner
+                      hammerPrice={form.hammer_price}
+                      sellPrice={result.sell_price || form.sold_price}
+                      channel={ch}
+                      shippingCost={form.shipping_cost_actual}
+                      paymentMethod={form.payment_method}
+                      promotedPct={form.promoted_pct}
+                      category={form.category}
+                      buyerShippingCharge={form.buyer_shipping_charge}
+                    />
+                  </div>
+
                 </div>
               )}
 

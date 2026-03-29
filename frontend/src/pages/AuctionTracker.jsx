@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api, CHANNELS, CHANNEL_MAP } from '../api';
+import ShippingCostField from '../components/ShippingCostField';
+import AlertBanner from '../components/AlertBanner';
+import LoadProfileButton from '../components/LoadTemplateButton';
 
 const STATUSES = ['unlisted', 'listed', 'sold', 'unsold'];
 const STATUS_COLORS = {
@@ -203,7 +206,29 @@ export default function AuctionTracker() {
               {/* Item Form */}
               {showItemForm && (
                 <div className="glass-card p-6 mb-6 animate-fade-in">
-                  <h3 className="font-semibold mb-4 text-surface-200">{editItem ? 'Edit Item' : 'New Item'}</h3>
+                  <div className="flex items-center gap-3 mb-4">
+                    <h3 className="font-semibold text-surface-200">{editItem ? 'Edit Item' : 'New Item'}</h3>
+                    <LoadProfileButton
+                      onLoad={(profile) => {
+                        setIForm(f => ({
+                          ...f,
+                          name: profile.item_name || f.name,
+                          sale_channel: profile.sale_channel || f.sale_channel,
+                          promoted_pct: String(profile.promoted_listing_pct || f.promoted_pct),
+                          shipping_charged_buyer: profile.buyer_shipping_charge ? String(profile.buyer_shipping_charge) : f.shipping_charged_buyer,
+                          // For Fixed Cost profiles, also fill the hammer price
+                          ...(profile.profile_type === 'fixed' && profile.fixed_buy_price
+                            ? { hammer_price: String(profile.fixed_buy_price) }
+                            : {}),
+                        }));
+                      }}
+                      onClear={() => {
+                        setIForm({ name: '', hammer_price: '', status: 'unlisted', list_price: '', sold_price: '',
+                          sell_date: '', shipping_cost_actual: '', shipping_charged_buyer: '', promoted_pct: '',
+                          sale_channel: 'ebay', notes: '' });
+                      }}
+                    />
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="text-xs text-surface-400 mb-1 block">Item Name</label>
@@ -236,11 +261,8 @@ export default function AuctionTracker() {
                       <input type="date" className="input-field" value={iForm.sell_date}
                         onChange={e => setIForm(f => ({ ...f, sell_date: e.target.value }))} id="item-sell-date" />
                     </div>
-                    <div>
-                      <label className="text-xs text-surface-400 mb-1 block">Your Shipping Cost</label>
-                      <input type="number" className="input-field" value={iForm.shipping_cost_actual}
-                        onChange={e => setIForm(f => ({ ...f, shipping_cost_actual: e.target.value }))} id="item-ship" />
-                    </div>
+                    <ShippingCostField value={iForm.shipping_cost_actual}
+                      onChange={v => setIForm(f => ({ ...f, shipping_cost_actual: v }))} />
                     <div>
                       <label className="text-xs text-surface-400 mb-1 block">Buyer Shipping Charge</label>
                       <input type="number" className="input-field" value={iForm.shipping_charged_buyer}
@@ -280,12 +302,27 @@ export default function AuctionTracker() {
                       👜 Fee: 20% if ≥ C$20 / flat C$3.95 if under C$20
                     </div>
                   )}
+
+                  {/* Break-Even Alert */}
+                  {iForm.hammer_price && (iForm.sold_price || iForm.list_price) && (
+                    <div className="mt-4">
+                      <AlertBanner
+                        hammerPrice={iForm.hammer_price}
+                        sellPrice={iForm.sold_price || iForm.list_price}
+                        channel={iForm.sale_channel}
+                        shippingCost={iForm.shipping_cost_actual}
+                        paymentMethod={iForm.payment_method}
+                        promotedPct={iForm.promoted_pct}
+                        buyerShippingCharge={iForm.shipping_charged_buyer}
+                      />
+                    </div>
+                  )}
                   <div className="mt-4">
                     <label className="text-xs text-surface-400 mb-1 block">Notes</label>
                     <textarea className="input-field" rows={2} value={iForm.notes}
                       onChange={e => setIForm(f => ({ ...f, notes: e.target.value }))} id="item-notes" />
                   </div>
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex items-center gap-3 mt-4">
                     <button onClick={editItem ? updateItem : createItem} className="btn-primary" id="save-item-btn">
                       {editItem ? 'Update Item' : 'Add Item'}
                     </button>

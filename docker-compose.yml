@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: flipiq-backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=sqlite:///data/flipiq.db
+      - CORS_ORIGINS=http://localhost,https://localhost
+    volumes:
+      - ./data:/data
+    networks:
+      - flipiq-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: flipiq-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - flipiq-network
+
+networks:
+  flipiq-network:
+    driver: bridge

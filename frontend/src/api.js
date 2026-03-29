@@ -43,6 +43,7 @@ export const api = {
   calcMode3: (data) => request('/calculator/mode3', { method: 'POST', body: JSON.stringify(data) }),
   calcMode4: (data) => request('/calculator/mode4', { method: 'POST', body: JSON.stringify(data) }),
   calcMode5: (data) => request('/calculator/mode5', { method: 'POST', body: JSON.stringify(data) }),
+  getAlert: (data) => request('/calculator/alert', { method: 'POST', body: JSON.stringify(data) }),
 
   // Auctions
   listAuctions: () => request('/auctions/'),
@@ -98,6 +99,7 @@ export const api = {
 
   // Item Templates (Feature 1.4)
   listTemplates: () => request('/templates/'),
+  getTemplate: (id) => request(`/templates/${id}`),
   createTemplate: (data) => request('/templates/', { method: 'POST', body: JSON.stringify(data) }),
   updateTemplate: (id, data) => request(`/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTemplate: (id) => request(`/templates/${id}`, { method: 'DELETE' }),

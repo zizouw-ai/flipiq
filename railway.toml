@@ -11,10 +11,8 @@ healthcheckPath = "/health"
 healthcheckTimeout = 10
 restartPolicyType = "on_failure"
 
-[mounts]
-# Railway Volume for SQLite persistence
-# Create via: railway volume add --mount-path /data
-/data = "/data"
+[mounts.data]
+mountPath = "/data"
 
 [variables]
 DATABASE_URL = "sqlite:///data/flipiq.db"

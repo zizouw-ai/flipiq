@@ -1,6 +1,5 @@
 // API base URL - uses environment variable for Railway, falls back to relative path for local dev
-// Railway production backend URL
-const API_BASE = import.meta.env.VITE_API_URL || 'https://flipiq-backend-production-7d65.up.railway.app';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 const API = `${API_BASE}/api`;
 
 async function request(url, options = {}) {

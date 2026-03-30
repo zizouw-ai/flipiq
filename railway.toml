@@ -1,11 +1,11 @@
 # Railway mono-repo service configuration
 
 [service.flipiq-backend]
-rootDirectory = "backend"
+rootDirectory = "."
 dockerfilePath = "Dockerfile.backend"
 
 [service.flipiq-backend.deploy]
-startCommand = "sh -c 'uvicorn app.main:app --host 0.0.0.0 --port $PORT'"
+startCommand = "./start.sh"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 

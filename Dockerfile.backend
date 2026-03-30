@@ -9,7 +9,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY backend/app ./app
-COPY backend/main.py .
 
 # Create data directory for SQLite
 RUN mkdir -p /data

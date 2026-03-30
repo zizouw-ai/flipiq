@@ -5,10 +5,12 @@ import Calculator from './pages/Calculator'
 import AuctionTracker from './pages/AuctionTracker'
 import Dashboard from './pages/Dashboard'
 import Settings from './pages/Settings'
+import AllItems from './pages/AllItems'
 
 const navItems = [
   { path: '/', label: 'Calculator', icon: '⚡' },
   { path: '/auctions', label: 'Auction Tracker', icon: '🔨' },
+  { path: '/items', label: 'All Items', icon: '📦' },
   { path: '/dashboard', label: 'Dashboard', icon: '📊' },
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ]
@@ -77,6 +79,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Calculator />} />
             <Route path="/auctions" element={<AuctionTracker />} />
+            <Route path="/items" element={<AllItems />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>

@@ -22,12 +22,13 @@ export default function AuctionTracker() {
   const [showItemForm, setShowItemForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
 
-  const [aForm, setAForm] = useState({ name: '', date: '', total_hammer: '0', payment_method: 'etransfer', notes: '' });
+  const [aForm, setAForm] = useState({ name: '', date: '', total_hammer: '0', payment_method: 'etransfer', notes: '', auction_house_config_id: null });
   const [iForm, setIForm] = useState({
     name: '', hammer_price: '', category: 'Most Categories (Default)',
     payment_method: 'etransfer', status: 'unlisted', list_price: '',
     sold_price: '', sell_date: '', shipping_cost_actual: '0',
     shipping_charged_buyer: '0', promoted_pct: '0', sale_channel: 'ebay', notes: '',
+    lot_number: '', estimated_resale: '', platform_sold_on: '',
   });
 
   const loadAuctions = () => api.listAuctions().then(setAuctions).catch(() => {});
@@ -59,6 +60,9 @@ export default function AuctionTracker() {
       shipping_charged_buyer: parseFloat(iForm.shipping_charged_buyer) || 0,
       promoted_pct: parseFloat(iForm.promoted_pct) || 0,
       sale_channel: iForm.sale_channel,
+      lot_number: iForm.lot_number || null,
+      estimated_resale: iForm.estimated_resale ? parseFloat(iForm.estimated_resale) : null,
+      platform_sold_on: iForm.platform_sold_on || null,
     };
     await api.createItem(selectedId, data);
     setShowItemForm(false);
@@ -76,6 +80,9 @@ export default function AuctionTracker() {
       shipping_charged_buyer: parseFloat(iForm.shipping_charged_buyer) || 0,
       promoted_pct: parseFloat(iForm.promoted_pct) || 0,
       sale_channel: iForm.sale_channel,
+      lot_number: iForm.lot_number || null,
+      estimated_resale: iForm.estimated_resale ? parseFloat(iForm.estimated_resale) : null,
+      platform_sold_on: iForm.platform_sold_on || null,
     };
     await api.updateItem(editItem.id, data);
     setEditItem(null); setShowItemForm(false);
@@ -94,6 +101,7 @@ export default function AuctionTracker() {
     payment_method: 'etransfer', status: 'unlisted', list_price: '',
     sold_price: '', sell_date: '', shipping_cost_actual: '0',
     shipping_charged_buyer: '0', promoted_pct: '0', sale_channel: 'ebay', notes: '',
+    lot_number: '', estimated_resale: '', platform_sold_on: '',
   });
 
   const startEditItem = (item) => {
@@ -107,6 +115,8 @@ export default function AuctionTracker() {
       shipping_charged_buyer: String(item.shipping_charged_buyer),
       promoted_pct: String(item.promoted_pct),
       sale_channel: item.sale_channel || 'ebay', notes: item.notes,
+      lot_number: item.lot_number || '', estimated_resale: item.estimated_resale ? String(item.estimated_resale) : '',
+      platform_sold_on: item.platform_sold_on || '',
     });
     setShowItemForm(true);
   };

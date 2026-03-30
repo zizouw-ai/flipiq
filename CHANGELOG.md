@@ -1,5 +1,18 @@
 # FlipIQ Changelog
 
+
+## v0.5.1 — 2026-03-29
+- **FIX**: Added missing database migrations for items/auctions tables
+  - Fixed "Save Auction" button not working (500 error)
+  - Added migrations for lot_number, estimated_resale, platform_sold_on, sale_channel, fb_sale_type
+  - Added migration for auction_house_config_id in auctions table
+- **FEATURE**: Added "All Items" page (cross-auction inventory search)
+  - New /items route with full-text search, filters, sorting
+  - Searchable across all auctions by name, lot number, status, category
+  - Export functionality from All Items view
+- **ENHANCEMENT**: AuctionTracker now supports lot_number, estimated_resale, platform_sold_on fields
+- Updated CLAUDE.md with Claude Code Router configuration rules
+
 ## v0.5.0 — 2026-03-29
 - Switched deployment target to Railway ($5/month Hobby plan)
 - Created railway.toml for backend service with SQLite volume support

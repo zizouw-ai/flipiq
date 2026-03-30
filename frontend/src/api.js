@@ -117,4 +117,12 @@ export const api = {
   },
   exportDashboardSummary: (year) => downloadFile(`/export/dashboard/summary?year=${year}`),
   exportTaxSummary: (year) => downloadFile(`/export/tax-summary?year=${year}`),
+
+  // All Items (cross-auction search)
+  searchItems: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+    return request(`/items/search?${qs}`);
+  },
+  getItemsSummary: () => request('/items/summary'),
+  getItemCategories: () => request('/items/categories'),
 };

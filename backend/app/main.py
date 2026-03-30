@@ -31,19 +31,17 @@ app = FastAPI(
 import os
 
 # CORS: Allow Railway domains + local dev
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
-# Also allow any Railway app domain
-RAILWAY_DOMAIN = os.getenv("RAILWAY_STATIC_URL", "")
-if RAILWAY_DOMAIN:
-    CORS_ORIGINS.append(RAILWAY_DOMAIN)
-# Allow Railway public domains (both frontend and backend)
-RAILWAY_PUBLIC_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
-if RAILWAY_PUBLIC_DOMAIN:
-    CORS_ORIGINS.append(f"https://{RAILWAY_PUBLIC_DOMAIN}")
-# Allow Railway URL (frontend service)
-RAILWAY_URL = os.getenv("RAILWAY_URL", "")
-if RAILWAY_URL:
-    CORS_ORIGINS.append(RAILWAY_URL)
+CORS_ORIGINS = ["*"] # Temporary: allow all origins for debugging
+# All Railway domains are likely covered by this, but specifically add if needed
+# RAILWAY_DOMAIN = os.getenv("RAILWAY_STATIC_URL", "")
+# if RAILWAY_DOMAIN:
+#     CORS_ORIGINS.append(RAILWAY_DOMAIN)
+# RAILWAY_PUBLIC_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+# if RAILWAY_PUBLIC_DOMAIN:
+#     CORS_ORIGINS.append(f"https://{RAILWAY_PUBLIC_DOMAIN}")
+# RAILWAY_URL = os.getenv("RAILWAY_URL", "")
+# if RAILWAY_URL:
+#     CORS_ORIGINS.append(RAILWAY_URL)
 
 app.add_middleware(
     CORSMiddleware,

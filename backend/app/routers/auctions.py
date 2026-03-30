@@ -1,7 +1,10 @@
 """Auction & Item CRUD API endpoints — with multi-channel fee support."""
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 from app.models import Auction, Item
 from app.schemas import (
     AuctionCreate, AuctionUpdate, AuctionResponse, AuctionListResponse,
@@ -65,11 +68,15 @@ def list_auctions(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=AuctionResponse)
 def create_auction(req: AuctionCreate, db: Session = Depends(get_db)):
+    logger.info(f"Received create auction request: {req.model_dump()}")
     auction = Auction(**req.model_dump())
+    logger.info(f"Auction object before adding to DB: {auction}")
     db.add(auction)
+    logger.info("Auction object added to session. Committing...")
     db.commit()
-    db.refresh(auction)
-    return auction
+    # db.refresh(auction) # No longer needed by default given no dependent reads.
+    logger.info(f"Auction committed. ID: {auction.id}")
+    return AuctionResponse.model_validate(auction)
 
 
 @router.get("/{auction_id}", response_model=AuctionResponse)

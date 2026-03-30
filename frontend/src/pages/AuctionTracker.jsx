@@ -37,9 +37,13 @@ export default function AuctionTracker() {
   useEffect(() => { loadAuctions(); }, []);
 
   const createAuction = async () => {
-    await api.createAuction({ ...aForm, total_hammer: parseFloat(aForm.total_hammer) || 0 });
-    setShowForm(false); setAForm({ name: '', date: '', total_hammer: '0', payment_method: 'etransfer', notes: '' });
-    loadAuctions();
+    try {
+      await api.createAuction({ ...aForm, total_hammer: parseFloat(aForm.total_hammer) || 0 });
+      setShowForm(false); setAForm({ name: '', date: '', total_hammer: '0', payment_method: 'etransfer', notes: '', auction_house_config_id: null });
+      loadAuctions();
+    } catch (err) {
+      alert('Failed to create auction: ' + err.message);
+    }
   };
 
   const deleteAuction = async (id) => {

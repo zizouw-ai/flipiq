@@ -4,7 +4,15 @@ import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./flipiq.db")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# Railway volume mount path - use /data for persistent storage if available
+if os.path.exists("/data") and DATABASE_URL.startswith("sqlite:///./"):
+    DATABASE_URL = "sqlite:///data/flipiq.db"
+
+# SQLite requires check_same_thread=False for FastAPI multi-threading
+# Only apply if DATABASE_URL starts with "sqlite"
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -44,61 +52,16 @@ def init_db():
     )
     Base.metadata.create_all(bind=engine)
 
-    # Migrate: add new Product Profile columns to existing item_templates table
-    _migrate_item_templates()
+    # These _migrate functions are SQLite specific and should be removed for PostgreSQL
+    # _migrate_item_templates()
+    # _migrate_items()
+    # _migrate_auctions()
 
-    # Migrate: add new columns to items table
-    _migrate_items()
+    # Seed default data (commented out to prevent re-seeding on every startup)
+    # db = SessionLocal()
+    # try:
+    #     seed_auction_houses(db)
+    #     seed_shipping_presets(db)
+    # finally:
+    #     db.close()
 
-    # Migrate: add new columns to auctions table
-    _migrate_auctions()
-
-    # Seed default data
-    db = SessionLocal()
-    try:
-        seed_auction_houses(db)
-        seed_shipping_presets(db)
-    finally:
-        db.close()
-
-
-def _safe_add_column(conn, table, column, col_type, default=None):
-    """Add a column to an existing SQLite table if it doesn't exist."""
-    import sqlite3
-    try:
-        default_clause = f" DEFAULT {default!r}" if default is not None else ""
-        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}{default_clause}")
-    except Exception:
-        pass  # Column already exists
-
-
-def _migrate_item_templates():
-    """Add new Product Profile columns to item_templates if they don't exist."""
-    with engine.connect() as conn:
-        _safe_add_column(conn, "item_templates", "profile_type", "TEXT", "auction")
-        _safe_add_column(conn, "item_templates", "item_name", "TEXT", "")
-        _safe_add_column(conn, "item_templates", "fixed_buy_price", "REAL", None)
-        _safe_add_column(conn, "item_templates", "typical_sell_price", "REAL", None)
-        _safe_add_column(conn, "item_templates", "ebay_category", "TEXT", "Most Categories (Default)")
-        _safe_add_column(conn, "item_templates", "ebay_store_toggle", "INTEGER", 0)
-        _safe_add_column(conn, "item_templates", "top_rated_toggle", "INTEGER", 0)
-        _safe_add_column(conn, "item_templates", "insertion_fee_toggle", "INTEGER", 0)
-        conn.commit()
-
-
-def _migrate_items():
-    """Add new columns to items table if they don't exist."""
-    with engine.connect() as conn:
-        _safe_add_column(conn, "items", "sale_channel", "TEXT", "ebay")
-        _safe_add_column(conn, "items", "fb_sale_type", "TEXT", None)
-        _safe_add_column(conn, "items", "lot_number", "TEXT", None)
-        _safe_add_column(conn, "items", "estimated_resale", "REAL", None)
-        _safe_add_column(conn, "items", "platform_sold_on", "TEXT", None)
-        conn.commit()
-
-
-def _migrate_auctions():
-    """Add new columns to auctions table if they don't exist."""
-    with engine.connect() as conn:
-        _safe_add_column(conn, "auctions", "auction_house_config_id", "INTEGER", None)
-        conn.commit()

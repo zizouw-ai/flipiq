@@ -1,5 +1,5 @@
 # FlipIQ — Full Project Brief & Handoff Document
-**Last updated: March 29, 2026**
+**Last updated: March 31, 2026**
 **Owner: Ramzi — London, Ontario, Canada**
 **Purpose: Full context for any AI assistant to continue building this app**
 
@@ -23,17 +23,17 @@ Poshmark, and Kijiji.
 
 ## TECH STACK
 
-| Layer         | Tech                        |
-|---------------|-----------------------------|
-| Backend       | FastAPI (Python), Uvicorn   |
-| Frontend      | React + Tailwind CSS + Vite |
-| Database      | SQLite via SQLAlchemy       |
-| Charts        | Recharts                    |
-| State         | Zustand                     |
-| Export        | openpyxl                    |
-| Tests         | pytest                      |
-| Backend port  | 8000                        |
-| Frontend port | 5173                        |
+| Layer         | Tech                                |
+|---------------|-------------------------------------|
+| Backend       | FastAPI (Python), Uvicorn           |
+| Frontend      | React + Tailwind CSS + Vite         |
+| Database      | PostgreSQL (Railway), SQLite (local)|
+| Charts        | Recharts                            |
+| State         | Zustand                             |
+| Export        | openpyxl                            |
+| Tests         | pytest                              |
+| Backend port  | 8000                                |
+| Frontend port | 5173                                |
 
 ---
 
@@ -51,10 +51,10 @@ See CHANGELOG.md for full history.
 - [x] Encore Auctions buy cost formula (16% premium, $1.50 handling, 13% HST, 2% CC)
 - [x] All eBay Canada fee categories pre-loaded (13 categories with correct FVF%)
 - [x] Multi-channel fee engine: eBay, Facebook Local, Facebook Shipped, Poshmark, Kijiji, Other
-- [x] Auction Tracker (log auctions, add items, track status)
+- [ ] Auction Tracker (log auctions, add items, track status) **(Partially working, saving broken)**
 - [x] Profitability Dashboard with charts (Recharts)
 - [x] Inventory log
-- [x] Persistent SQLite database
+- [ ] Persistent SQLite database (Locally yes, Railway uses Postgres)
 - [x] Full pytest unit test suite
 - [x] GitHub repo: flipiq
 - [x] Settings pages: General, Auction Houses, Shipping, Templates
@@ -64,10 +64,10 @@ See CHANGELOG.md for full history.
 - [x] Configurable auction house fee engine
 
 ### IN PROGRESS / PARTIALLY WORKING
-None — Phase 1 complete. Moving to Phase 2 deployment.
+- [ ] Auction saving functionality (Blocked by 405 on Railway)
+- [ ] Pricing Calculator functionality on Railway (Reported not working)
 
 ### NOT STARTED
-- [ ] Phase 2: Deployment to Hetzner VPS
 - [ ] Phase 3: Multi-user auth (JWT), Stripe billing, landing page
 - [ ] Phase 4: eBay Sold Comps lookup, Bulk Price Calculator, Tax Report PDF
 - [ ] Phase 5: Team accounts, Auto-repricer, eBay listing creation API
@@ -85,7 +85,8 @@ The AI working on the project MUST update this section at the end of every sessi
 - [ ] BUG-XXX | Short description | Affected: path/to/file.py | Discovered: YYYY-MM-DD | Notes: context
 
 ### Open Bugs
-None at this time. Log new bugs here as they are found.
+- [ ] BUG-001 | Auction save API call getting 405 Method Not Allowed error on Railway | Affected: Backend service routing, Frontend API calls | Discovered: 2026-03-30 | Notes: Backend receives no logs, suggests Railway proxy blocking POST request. CORS set to allow all origins temporarily did not resolve.
+- [ ] BUG-002 | Pricing Calculator functionality not working on Railway | Affected: Calculator API calls | Discovered: 2026-03-30 | Notes: Assumed due to same underlying API call issues as auction save.
 
 ### Resolved Bugs
 
@@ -112,11 +113,11 @@ The AI must update this section when a milestone is finished.
 - [x] 1.9 Profit recalculation on hammer price change
 
 ### Phase 2 — Go Online (Railway Hobby $5/mo) 🚧 IN PROGRESS
-- [x] 2.1 Deploy to Railway Hobby — railway.toml created, ready for railway up
-- [x] 2.2 Backend service with SQLite Volume at /data/flipiq.db — configured
-- [x] 2.3 Frontend static build service — railway.frontend.toml ready
-- [x] 2.4 CORS configured for Railway domains — auto-detects RAILWAY_STATIC_URL
-- [x] 2.5 Environment variables (VITE_API_URL) — api.js updated
+- [x] 2.1 Deploy to Railway Hobby (Basic service setup achieved, but core functionality issues persist)
+- [x] 2.2 Backend service with PostgreSQL (Railway) / SQLite (local dev); Volume at /data/flipiq.db for local SQLite (Railway uses Postgres)
+- [x] 2.3 Frontend static build service (Frontend now loads, but API calls failing)
+- [x] 2.4 CORS configured for Railway domains (More permissive options tried, issue is upstream)
+- [x] 2.5 Environment variables (VITE_API_URL, etc.) configured (Corrected in united railway.toml, but still issues)
 - [ ] 2.6 Custom domain (flipiq.ca) — awaiting deployment
 
 ### Phase 3 — SaaS Launch
@@ -161,6 +162,7 @@ auction_house_configs -- configurable fee profiles per auction house
 shipping_presets      -- saved carrier rates (Canada Post, UPS, FedEx, etc.)
 item_templates        -- product profiles
 user_settings         -- persistent preferences
+*(Note: On Railway deployment, the database used is PostgreSQL, while local development primarily uses SQLite.)*
 
 ---
 
@@ -265,7 +267,8 @@ flipiq/
 │   │   ├── export.py
 │   │   ├── settings.py
 │   │   └── templates.py
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── start.sh
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/
@@ -276,7 +279,8 @@ flipiq/
 │   │   │   └── Settings.jsx
 │   │   ├── components/
 │   │   └── store/
-│   └── package.json
+│   ├── package.json
+│   └── Dockerfile.frontend
 ├── tests/
 │   ├── test_fees.py
 │   ├── test_channels.py
@@ -285,7 +289,10 @@ flipiq/
 ├── VERSION.txt
 ├── CHANGELOG.md
 ├── FLIPIQ_BRIEF.md
-└── README.md
+├── RAILWAY_DEPLOY.md
+├── README.md
+├── railway.toml
+└── start.sh
 
 ---
 
@@ -338,6 +345,7 @@ Append one row per session. Never delete rows.
 | 2026-03-28 | v0.3.0  | Phase 1 fully complete; version bump; deployment prep | Claude |
 | 2026-03-28 | v0.4.0  | Phase 2 deployment infrastructure complete; Docker, nginx, scripts ready | Claude |
 | 2026-03-29 | v0.5.0  | Switched to Railway deployment; railway.toml, CORS updates, RAILWAY_DEPLOY.md | Claude |
+| 2026-03-31 | v0.5.1  | Attempted to debug Railway deployment issues (405 errors, frontend service misconfiguration). Diagnosed core issue as Railway's external routing for backend. Prepared handover notes. | Claude |
 
 ---
 

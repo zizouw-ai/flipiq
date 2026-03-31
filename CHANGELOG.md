@@ -1,17 +1,15 @@
 # FlipIQ Changelog
 
-
-## v0.5.1 — 2026-03-29
-- **FIX**: Added missing database migrations for items/auctions tables
-  - Fixed "Save Auction" button not working (500 error)
-  - Added migrations for lot_number, estimated_resale, platform_sold_on, sale_channel, fb_sale_type
-  - Added migration for auction_house_config_id in auctions table
-- **FEATURE**: Added "All Items" page (cross-auction inventory search)
-  - New /items route with full-text search, filters, sorting
-  - Searchable across all auctions by name, lot number, status, category
-  - Export functionality from All Items view
-- **ENHANCEMENT**: AuctionTracker now supports lot_number, estimated_resale, platform_sold_on fields
-- Updated CLAUDE.md with Claude Code Router configuration rules
+## v0.5.1 — 2026-03-31
+- **FIX**: Attempted fixes for Railway deployment configuration for both frontend and backend services.
+  - Consolidated Railway service configuration into a single `railway.toml` at the project root.
+  - Corrected Dockerfile paths and root directories for `flipiq-backend` and `flipiq-frontend` services.
+  - Addressed `uvicorn: command not found` error on frontend service by ensuring correct Dockerfile is used.
+  - Updated CORS configuration in backend to allow all origins temporarily for debugging.
+  - Ensured `VITE_API_URL` build variable in frontend points to the correct backend public domain.
+- **BUG**: Frontend 'Save Auction' functionality (POST /api/auctions/) returns 405 Method Not Allowed error on Railway.
+- **BUG**: Pricing Calculator functionality reported not working on Railway.
+- **DIAGNOSIS**: 405 error is likely due to Railway's internal proxy/ingress blocking POST requests before they reach the FastAPI application. Backend API calls via `curl` directly succeed.
 
 ## v0.5.0 — 2026-03-29
 - Switched deployment target to Railway ($5/month Hobby plan)

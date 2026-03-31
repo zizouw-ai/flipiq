@@ -1,0 +1,71 @@
+# Handover Document: Current State of FlipIQ on Railway
+
+This document outlines the debugging process, the current state of the Railway deployment, and the remaining issues for the FlipIQ application. This is for the Antigravity code builder agent to take over.
+
+Original Task: Fix auction saving functionality on Railway.
+
+## 1. Current Deployment Status
+
+### Backend Service (flipiq-backend)
+*   **Deployment Platform:** Railway
+*   **Database:** PostgreSQL (provisioned by Railway's PostgreSQL plugin, connected via `DATABASE_URL` environment variable). SQLite (`flipiq.db`) is used for local development.
+*   **Deployment Status:** Running (Uvicorn). Direct `POST` requests to `/api/auctions/` via `curl` are successful, returning a 200 OK and creating an auction.
+*   **Known Issues:**
+    *   Frontend requests to the backend API (`POST /api/auctions/`) consistently receive a **405 Method Not Allowed** error.
+    *   Backend service logs do NOT show any incoming requests when the frontend attempts to save an auction. This indicates the 405 error is being returned by Railway's internal proxy/ingress *before* the request even reaches the FastAPI application.
+    *   Generating a domain for the backend via `railway domain` CLI command currently fails (Error: "No domain found"). This suggests a problem with Railway's public routing for the backend.
+*   **Last Fix Attempts (Backend):**
+    *   Ensured `logger` import in `backend/app/routers/auctions.py`.
+    *   Fixed database path to use `/data/flipiq.db` when on Railway volume.
+    *   Temporarily set CORS to allow all origins (`allow_origins=["*"]`) in `backend/app/main.py`. This did NOT resolve the 405, indicating the issue is upstream of the FastAPI app.
+    *   Reverted CORS to more specific Railway domains (currently in `backend/app/main.py`).
+
+### Frontend Service (flipiq-frontend)
+*   **Deployment Platform:** Railway
+*   **Deployment Status:** Running, displaying the React application. Previously, it was incorrectly running the backend's Uvicorn server, but this has been resolved.
+*   **API URL:** Configured with `VITE_API_URL` to point to the backend's public domain (`https://flipiq-backend-production-7d65.up.railway.app`).
+*   **Known Issues:**
+    *   When attempting to save an auction, the frontend receives a **405 Method Not Allowed** error (as described above for the backend).
+    *   The "Pricing Calculator" and potentially other execution buttons are also reported as not working, suggesting a broader API communication issue.
+*   **Last Fix Attempts (Frontend):**
+    *   Corrected the `flipiq-frontend` service to use `frontend/Dockerfile.frontend` and `rootDirectory = "frontend"`. This was achieved via a unified `railway.toml` at the project root which explicitly defines both services.
+    *   Ensured `VITE_API_URL` is set as a build variable pointing to the backend's public URL.
+    *   Added `try/catch` block for `createAuction` in `frontend/src/pages/AuctionTracker.jsx` to display API errors.
+
+## 2. Unresolved Core Problem: Frontend-to-Backend 405
+
+The persistent 405 error, even with permissive CORS on the backend and no backend logs showing the request, strongly suggests that **Railway's internal routing for the `flipiq-backend` service is incorrectly configured or blocking `POST` requests from the `flipiq-frontend` domain.**
+
+The failure to generate a domain for the backend via CLI (`railway domain`) further supports that the backend's public routing is problematic.
+
+## 3. Next Steps for Antigravity
+
+Antigravity should focus on:
+
+1.  **Railway Dashboard Inspection (Backend Networking):**
+    *   Manually inspect the `flipiq-backend` service's "Networking" tab in the Railway dashboard. Look for any explicit or implicit policies that could filter HTTP methods (especially `POST`) or paths.
+    *   **Crucially, delete the existing public domain for `flipiq-backend` and generate a new one. Then ensure `flipiq-frontend`'s `VITE_API_URL` build variable is updated with this new backend URL.** This is the most likely culprit based on our debugging.
+
+2.  **Verify Backend Endpoints:**
+    *   Once routing is suspected to be fixed, confirm all backend API endpoints are correctly exposed and accessible by the frontend.
+    *   Specifically check `/api/auctions/ POST` and `/api/calculator/*` endpoints.
+
+3.  **Full Frontend Functionality Test:**
+    *   Test the "Pricing Calculator" and other execution buttons in the frontend to ensure all API calls are now functioning.
+
+## 4. Files Updated by Kimi Code
+
+*   `backend/app/routers/auctions.py`: Added `logger` import.
+*   `backend/app/database.py`: Fixed database path for Railway volume.
+*   `backend/app/main.py`: Adjusted CORS configuration.
+*   `frontend/src/pages/AuctionTracker.jsx`: Added error handling for `createAuction`.
+*   Moved `start.sh` to project root.
+*   Unified `railway.toml` at project root with explicit definitions for `flipiq-backend` and `flipiq-frontend` services.
+*   `frontend/src/api.js`: Reverted temporary hardcoded backend URL.
+
+## 5. Other Notes
+
+*   Frontend `VITE_API_URL` is configured as a build variable in `railway.toml`.
+*   Backend uses PostgreSQL on Railway, SQLite locally.
+
+This wraps up my work for you on this task. I wish great success to the Antigravity agent in resolving these final issues.

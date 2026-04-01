@@ -6,14 +6,18 @@ import { useAuthStore } from './store/authStore'
 
 async function request(url, options = {}) {
   const authHeaders = useAuthStore.getState().getAuthHeaders()
+  const isDevMode = useAuthStore.getState().devMode
   const res = await fetch(`${API}${url}`, {
     headers: { ...authHeaders, ...options.headers },
     ...options,
   });
-  if (res.status === 401) {
+  if (res.status === 401 && !isDevMode) {
     useAuthStore.getState().logout()
     window.location.href = '/login'
     throw new Error('Session expired. Please log in again.')
+  }
+  if (res.status === 401 && isDevMode) {
+    throw new Error('Dev mode: Please enable dev mode again')
   }
   if (!res.ok) throw new Error(`API Error: ${res.status}`);
   return res.json();
@@ -21,13 +25,17 @@ async function request(url, options = {}) {
 
 async function downloadFile(url) {
   const authHeaders = useAuthStore.getState().getAuthHeaders()
+  const isDevMode = useAuthStore.getState().devMode
   const res = await fetch(`${API}${url}`, {
     headers: authHeaders.Authorization ? { Authorization: authHeaders.Authorization } : {},
   });
-  if (res.status === 401) {
+  if (res.status === 401 && !isDevMode) {
     useAuthStore.getState().logout()
     window.location.href = '/login'
     throw new Error('Session expired. Please log in again.')
+  }
+  if (res.status === 401 && isDevMode) {
+    throw new Error('Dev mode: Please enable dev mode again')
   }
   if (!res.ok) throw new Error(`Download Error: ${res.status}`);
   const blob = await res.blob();

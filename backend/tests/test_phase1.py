@@ -7,6 +7,70 @@ from app.main import app
 
 client = TestClient(app)
 
+
+# ============================================================================
+# Test Authentication Helper
+# ============================================================================
+
+@pytest.fixture
+def auth_headers():
+    """Create a test user and return auth headers."""
+    from app.database import SessionLocal
+    from app.models import User
+    
+    register_data = {
+        "email": "test_phase1@example.com",
+        "password": "testpassword123",
+        "name": "Test User"
+    }
+    client.post("/api/auth/register", json=register_data)
+    
+    # Upgrade user to pro plan for testing
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == "test_phase1@example.com").first()
+        if user:
+            user.plan = "pro"
+            db.commit()
+    finally:
+        db.close()
+    
+    login_data = {
+        "email": "test_phase1@example.com",
+        "password": "testpassword123"
+    }
+    r = client.post("/api/auth/login", json=login_data)
+    if r.status_code == 200:
+        token = r.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+    return {}
+
+
+@pytest.fixture
+def auth_client(auth_headers):
+    """Return a client with authentication headers."""
+    class AuthClient:
+        def __init__(self, headers):
+            self.headers = headers
+        
+        def post(self, url, **kwargs):
+            kwargs.setdefault("headers", {}).update(self.headers)
+            return client.post(url, **kwargs)
+        
+        def get(self, url, **kwargs):
+            kwargs.setdefault("headers", {}).update(self.headers)
+            return client.get(url, **kwargs)
+        
+        def put(self, url, **kwargs):
+            kwargs.setdefault("headers", {}).update(self.headers)
+            return client.put(url, **kwargs)
+        
+        def delete(self, url, **kwargs):
+            kwargs.setdefault("headers", {}).update(self.headers)
+            return client.delete(url, **kwargs)
+    
+    return AuthClient(auth_headers)
+
 # ── Feature 1.1 — Auction House Configs ─────────────────────────────────────
 
 from app.buy_cost import (
@@ -213,39 +277,39 @@ class TestProfitGoal:
 # ── Feature 1.6 — Export (API tests) ────────────────────────────────────────
 
 class TestExport:
-    def test_export_auction_returns_xlsx(self):
-        resp = client.post("/api/auctions/", json={"name": "Export Test", "date": "2026-03-25", "total_hammer": 100.0})
+    def test_export_auction_returns_xlsx(self, auth_client):
+        resp = auth_client.post("/api/auctions/", json={"name": "Export Test", "date": "2026-03-25", "total_hammer": 100.0})
         aid = resp.json()["id"]
-        client.post(f"/api/auctions/{aid}/items", json={
+        auth_client.post(f"/api/auctions/{aid}/items", json={
             "name": "Widget", "hammer_price": 30.0, "status": "sold",
             "sold_price": 50.0, "sell_date": "2026-03-26", "sale_channel": "ebay",
         })
-        response = client.get(f"/api/export/auction/{aid}")
+        response = auth_client.get(f"/api/export/auction/{aid}")
         assert response.status_code == 200
         assert "spreadsheetml" in response.headers["content-type"]
 
-    def test_export_auction_not_found(self):
-        response = client.get("/api/export/auction/9999")
+    def test_export_auction_not_found(self, auth_client):
+        response = auth_client.get("/api/export/auction/9999")
         assert response.status_code == 404
 
-    def test_export_inventory(self):
-        response = client.get("/api/export/inventory")
+    def test_export_inventory(self, auth_client):
+        response = auth_client.get("/api/export/inventory")
         assert response.status_code == 200
         assert "spreadsheetml" in response.headers["content-type"]
 
-    def test_export_dashboard_summary(self):
-        response = client.get("/api/export/dashboard/summary?year=2026")
+    def test_export_dashboard_summary(self, auth_client):
+        response = auth_client.get("/api/export/dashboard/summary?year=2026")
         assert response.status_code == 200
 
-    def test_export_tax_summary(self):
-        response = client.get("/api/export/tax-summary?year=2026")
+    def test_export_tax_summary(self, auth_client):
+        response = auth_client.get("/api/export/tax-summary?year=2026")
         assert response.status_code == 200
 
-    def test_export_columns_present(self):
-        resp = client.post("/api/auctions/", json={"name": "Col Test", "date": "2026-03-25"})
+    def test_export_columns_present(self, auth_client):
+        resp = auth_client.post("/api/auctions/", json={"name": "Col Test", "date": "2026-03-25"})
         aid = resp.json()["id"]
-        client.post(f"/api/auctions/{aid}/items", json={"name": "Item", "hammer_price": 10.0})
-        response = client.get(f"/api/export/auction/{aid}")
+        auth_client.post(f"/api/auctions/{aid}/items", json={"name": "Item", "hammer_price": 10.0})
+        response = auth_client.get(f"/api/export/auction/{aid}")
         import openpyxl
         wb = openpyxl.load_workbook(BytesIO(response.content))
         ws = wb.active
@@ -349,10 +413,10 @@ class TestCustomTaxOverride:
 # ── Bug Fix 3 — Export Fixes ─────────────────────────────────────────────────
 
 class TestExportFixes:
-    def test_export_empty_auction_returns_file(self):
-        resp = client.post("/api/auctions/", json={"name": "Empty Auction", "date": "2026-03-27"})
+    def test_export_empty_auction_returns_file(self, auth_client):
+        resp = auth_client.post("/api/auctions/", json={"name": "Empty Auction", "date": "2026-03-27"})
         aid = resp.json()["id"]
-        response = client.get(f"/api/export/auction/{aid}")
+        response = auth_client.get(f"/api/export/auction/{aid}")
         assert response.status_code == 200
         assert "spreadsheetml" in response.headers["content-type"]
         # Verify the file has content (headers + "No items" row)
@@ -361,50 +425,50 @@ class TestExportFixes:
         ws = wb.active
         assert ws.cell(row=2, column=1).value == "No items in this auction"
 
-    def test_export_nonexistent_auction_returns_404(self):
-        response = client.get("/api/export/auction/999999")
+    def test_export_nonexistent_auction_returns_404(self, auth_client):
+        response = auth_client.get("/api/export/auction/999999")
         assert response.status_code == 404
 
 
 # ── Bug Fix 4 — Profit Recalculation ─────────────────────────────────────────
 
 class TestProfitRecalc:
-    def _create_sold_item(self):
-        resp = client.post("/api/auctions/", json={"name": "Recalc Test", "date": "2026-03-27"})
+    def _create_sold_item(self, auth_client):
+        resp = auth_client.post("/api/auctions/", json={"name": "Recalc Test", "date": "2026-03-27"})
         aid = resp.json()["id"]
-        item_resp = client.post(f"/api/auctions/{aid}/items", json={
+        item_resp = auth_client.post(f"/api/auctions/{aid}/items", json={
             "name": "Sold Widget", "hammer_price": 30.0, "status": "sold",
             "sold_price": 80.0, "sell_date": "2026-03-27", "sale_channel": "ebay",
         })
         return item_resp.json()
 
-    def test_profit_calculated_on_create(self):
-        item = self._create_sold_item()
+    def test_profit_calculated_on_create(self, auth_client):
+        item = self._create_sold_item(auth_client)
         assert item["net_profit"] is not None
         assert item["roi_pct"] is not None
 
-    def test_profit_resets_when_status_set_to_unlisted(self):
-        item = self._create_sold_item()
-        r = client.put(f"/api/auctions/items/{item['id']}", json={"status": "unlisted", "sold_price": None})
+    def test_profit_resets_when_status_set_to_unlisted(self, auth_client):
+        item = self._create_sold_item(auth_client)
+        r = auth_client.put(f"/api/auctions/items/{item['id']}", json={"status": "unlisted", "sold_price": None})
         assert r.status_code == 200
         data = r.json()
         assert data["net_profit"] is None
         assert data["roi_pct"] is None
 
-    def test_profit_recalculates_on_price_change(self):
-        item = self._create_sold_item()
+    def test_profit_recalculates_on_price_change(self, auth_client):
+        item = self._create_sold_item(auth_client)
         original_profit = item["net_profit"]
-        r = client.put(f"/api/auctions/items/{item['id']}", json={"sold_price": 200.00})
+        r = auth_client.put(f"/api/auctions/items/{item['id']}", json={"sold_price": 200.00})
         assert r.status_code == 200
         new_profit = r.json()["net_profit"]
         assert new_profit is not None
         assert new_profit != original_profit
         assert new_profit > original_profit  # Higher sell = higher profit
 
-    def test_profit_recalculates_on_hammer_price_change(self):
-        item = self._create_sold_item()
+    def test_profit_recalculates_on_hammer_price_change(self, auth_client):
+        item = self._create_sold_item(auth_client)
         original_cost = item["buy_cost_total"]
-        r = client.put(f"/api/auctions/items/{item['id']}", json={"hammer_price": 1.00})
+        r = auth_client.put(f"/api/auctions/items/{item['id']}", json={"hammer_price": 1.00})
         assert r.status_code == 200
         data = r.json()
         assert data["buy_cost_total"] != original_cost

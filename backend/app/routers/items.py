@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc, asc, or_, and_
 from app.database import get_db
-from app.models import Item, Auction
+from app.models import Item, Auction, User
+from app.auth.jwt import require_auth
 
 router = APIRouter(prefix="/api/items", tags=["items"])
 
@@ -27,9 +28,10 @@ def search_items(
     page: int = Query(1, description="Page number"),
     per_page: int = Query(50, description="Items per page"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_auth),
 ):
     """Search and filter items across all auctions."""
-    query = db.query(Item).join(Auction)
+    query = db.query(Item).join(Auction).filter(Auction.user_id == current_user.id)
 
     # Full-text search
     if q:
@@ -99,7 +101,7 @@ def search_items(
     items = query.options(joinedload(Item.auction)).all()
 
     # Calculate summary stats
-    all_items_query = db.query(Item).join(Auction)
+    all_items_query = db.query(Item).join(Auction).filter(Auction.user_id == current_user.id)
     if auction_ids:
         all_items_query = all_items_query.filter(Item.auction_id.in_(ids))
     if status:
@@ -112,8 +114,9 @@ def search_items(
         func.sum(Item.sold_price).label("total_revenue"),
         func.sum(Item.net_profit).label("total_profit"),
     ).join(Auction).filter(
+        Auction.user_id == current_user.id,
         # Apply same filters for summary except profit (which might be null)
-        Item.auction_id.in_(ids) if auction_ids else True
+        (Item.auction_id.in_(ids)) if auction_ids else True
     ).first()
 
     return {
@@ -157,7 +160,7 @@ def search_items(
 
 
 @router.get("/summary")
-def get_items_summary(db: Session = Depends(get_db)):
+def get_items_summary(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     """Get aggregate stats for all items."""
     result = db.query(
         func.count(Item.id).label("total_items"),
@@ -168,7 +171,7 @@ def get_items_summary(db: Session = Depends(get_db)):
         func.count().filter(Item.status == "listed").label("listed_count"),
         func.count().filter(Item.status == "sold").label("sold_count"),
         func.count().filter(Item.status == "unsold").label("unsold_count"),
-    ).first()
+    ).join(Auction).filter(Auction.user_id == current_user.id).first()
 
     return {
         "total_items": result.total_items or 0,
@@ -185,7 +188,9 @@ def get_items_summary(db: Session = Depends(get_db)):
 
 
 @router.get("/categories")
-def get_item_categories(db: Session = Depends(get_db)):
+def get_item_categories(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     """Get all unique item categories across all auctions."""
-    categories = db.query(Item.category).distinct().all()
+    categories = db.query(Item.category).join(Auction).filter(
+        Auction.user_id == current_user.id
+    ).distinct().all()
     return [c[0] for c in categories if c[0]]

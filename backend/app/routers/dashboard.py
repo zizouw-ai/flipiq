@@ -3,9 +3,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
-from app.models import Item, Auction
+from app.models import Item, Auction, User
 from app.fees import calculate_fees, CHANNEL_LABELS
 from app.calculators import calculate_ebay_fees
+from app.auth.jwt import require_auth
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -22,7 +23,8 @@ def _get_item_fees(item):
     return result["platform_fee"]
 
 
-def _apply_filters(query, date_from, date_to, category, auction_name, channel, db):
+def _apply_filters(query, date_from, date_to, category, auction_name, channel, user_id):
+    query = query.filter(Auction.user_id == user_id)
     if date_from:
         query = query.filter(Auction.date >= date_from)
     if date_to:
@@ -45,9 +47,10 @@ def get_kpis(
     status: Optional[str] = None,
     channel: Optional[str] = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_auth),
 ):
     query = db.query(Item).join(Auction)
-    query = _apply_filters(query, date_from, date_to, category, auction_name, channel, db)
+    query = _apply_filters(query, date_from, date_to, category, auction_name, channel, current_user.id)
     if status:
         query = query.filter(Item.status == status)
 
@@ -81,7 +84,10 @@ def get_kpis(
     # Feature 1.8 — Goal progress
     from app.models import UserSetting
     import calendar
-    goal_setting = db.query(UserSetting).filter(UserSetting.key == "monthly_profit_goal_cad").first()
+    goal_setting = db.query(UserSetting).filter(
+        UserSetting.key == "monthly_profit_goal_cad",
+        UserSetting.user_id == current_user.id
+    ).first()
     goal_amount = float(goal_setting.value) if goal_setting else 0.0
     goal_progress = None
     if goal_amount > 0:
@@ -124,9 +130,13 @@ def get_kpis(
 
 
 @router.get("/charts/by-channel")
-def get_channel_summary(db: Session = Depends(get_db)):
+def get_channel_summary(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     """Revenue, profit, ROI, items sold grouped by channel."""
-    items = db.query(Item).filter(Item.status == "sold", Item.sold_price.isnot(None)).all()
+    items = db.query(Item).join(Auction).filter(
+        Item.status == "sold",
+        Item.sold_price.isnot(None),
+        Auction.user_id == current_user.id
+    ).all()
     channels = {}
     for i in items:
         ch = i.sale_channel or "ebay"
@@ -150,9 +160,9 @@ def get_channel_summary(db: Session = Depends(get_db)):
 
 
 @router.get("/charts/monthly")
-def get_monthly_chart(channel: Optional[str] = None, db: Session = Depends(get_db)):
+def get_monthly_chart(channel: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     """Monthly Revenue vs. Cost vs. Profit with optional channel filter."""
-    query = db.query(Item).join(Auction)
+    query = db.query(Item).join(Auction).filter(Auction.user_id == current_user.id)
     if channel and channel != "all":
         query = query.filter(Item.sale_channel == channel)
     items = query.all()
@@ -177,8 +187,12 @@ def get_monthly_chart(channel: Optional[str] = None, db: Session = Depends(get_d
 
 
 @router.get("/charts/roi-by-category")
-def get_roi_by_category(db: Session = Depends(get_db)):
-    items = db.query(Item).filter(Item.status == "sold", Item.net_profit.isnot(None)).all()
+def get_roi_by_category(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    items = db.query(Item).join(Auction).filter(
+        Item.status == "sold",
+        Item.net_profit.isnot(None),
+        Auction.user_id == current_user.id
+    ).all()
     cats = {}
     for i in items:
         if i.category not in cats:
@@ -193,8 +207,12 @@ def get_roi_by_category(db: Session = Depends(get_db)):
 
 
 @router.get("/charts/best-worst")
-def get_best_worst(db: Session = Depends(get_db)):
-    items = db.query(Item).filter(Item.status == "sold", Item.net_profit.isnot(None)).all()
+def get_best_worst(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    items = db.query(Item).join(Auction).filter(
+        Item.status == "sold",
+        Item.net_profit.isnot(None),
+        Auction.user_id == current_user.id
+    ).all()
     sorted_items = sorted(items, key=lambda x: x.net_profit or 0, reverse=True)
     best = [{"name": i.name, "net_profit": round(i.net_profit, 2), "channel": i.sale_channel or "ebay"} for i in sorted_items[:10]]
     worst = [{"name": i.name, "net_profit": round(i.net_profit, 2), "channel": i.sale_channel or "ebay"} for i in sorted_items[-10:]]
@@ -202,9 +220,13 @@ def get_best_worst(db: Session = Depends(get_db)):
 
 
 @router.get("/charts/fee-breakdown")
-def get_fee_breakdown(db: Session = Depends(get_db)):
+def get_fee_breakdown(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     """Fee breakdown over time — now grouped by channel type."""
-    items = db.query(Item).join(Auction).filter(Item.status == "sold", Item.sold_price.isnot(None)).all()
+    items = db.query(Item).join(Auction).filter(
+        Item.status == "sold",
+        Item.sold_price.isnot(None),
+        Auction.user_id == current_user.id
+    ).all()
     monthly = {}
     for item in items:
         auction = db.query(Auction).filter(Auction.id == item.auction_id).first()
@@ -233,8 +255,8 @@ def get_fee_breakdown(db: Session = Depends(get_db)):
 
 
 @router.get("/charts/profit-per-auction")
-def get_profit_per_auction(db: Session = Depends(get_db)):
-    auctions = db.query(Auction).all()
+def get_profit_per_auction(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    auctions = db.query(Auction).filter(Auction.user_id == current_user.id).all()
     result = []
     for a in auctions:
         items = db.query(Item).filter(Item.auction_id == a.id).all()
@@ -249,8 +271,12 @@ def get_profit_per_auction(db: Session = Depends(get_db)):
 
 
 @router.get("/charts/cumulative-profit")
-def get_cumulative_profit(channel: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Item).join(Auction).filter(Item.status == "sold", Item.net_profit.isnot(None))
+def get_cumulative_profit(channel: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    query = db.query(Item).join(Auction).filter(
+        Item.status == "sold",
+        Item.net_profit.isnot(None),
+        Auction.user_id == current_user.id
+    )
     if channel and channel != "all":
         query = query.filter(Item.sale_channel == channel)
     items = query.order_by(Auction.date).all()

@@ -20,6 +20,74 @@ client = TestClient(app)
 
 
 # ============================================================================
+# Test Authentication Helper
+# ============================================================================
+
+@pytest.fixture
+def auth_headers():
+    """Create a test user and return auth headers."""
+    # Import here to avoid circular imports
+    from app.database import SessionLocal
+    from app.models import User
+    
+    # Register a test user
+    register_data = {
+        "email": "test@example.com",
+        "password": "testpassword123",
+        "name": "Test User"
+    }
+    # Try to register (may fail if user already exists)
+    client.post("/api/auth/register", json=register_data)
+    
+    # Upgrade user to pro plan for testing
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == "test@example.com").first()
+        if user:
+            user.plan = "pro"
+            db.commit()
+    finally:
+        db.close()
+    
+    # Login to get token
+    login_data = {
+        "email": "test@example.com",
+        "password": "testpassword123"
+    }
+    r = client.post("/api/auth/login", json=login_data)
+    if r.status_code == 200:
+        token = r.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+    return {}
+
+
+@pytest.fixture
+def auth_client(auth_headers):
+    """Return a client with authentication headers."""
+    class AuthClient:
+        def __init__(self, headers):
+            self.headers = headers
+        
+        def post(self, url, **kwargs):
+            kwargs.setdefault("headers", {}).update(self.headers)
+            return client.post(url, **kwargs)
+        
+        def get(self, url, **kwargs):
+            kwargs.setdefault("headers", {}).update(self.headers)
+            return client.get(url, **kwargs)
+        
+        def put(self, url, **kwargs):
+            kwargs.setdefault("headers", {}).update(self.headers)
+            return client.put(url, **kwargs)
+        
+        def delete(self, url, **kwargs):
+            kwargs.setdefault("headers", {}).update(self.headers)
+            return client.delete(url, **kwargs)
+    
+    return AuthClient(auth_headers)
+
+
+# ============================================================================
 # PART 1 — Encore Auction Cost Tests
 # ============================================================================
 
@@ -341,94 +409,94 @@ class TestAPICalculator:
 
 
 class TestAPIAuctions:
-    def test_create_auction(self):
-        r = client.post("/api/auctions/", json={
+    def test_create_auction(self, auth_client):
+        r = auth_client.post("/api/auctions/", json={
             "name": "Test Auction", "date": "2025-01-15",
             "total_hammer": 500.0, "payment_method": "etransfer",
         })
         assert r.status_code == 200
         assert r.json()["name"] == "Test Auction"
 
-    def test_list_auctions(self):
-        client.post("/api/auctions/", json={
+    def test_list_auctions(self, auth_client):
+        auth_client.post("/api/auctions/", json={
             "name": "Test", "date": "2025-01-15",
         })
-        r = client.get("/api/auctions/")
+        r = auth_client.get("/api/auctions/")
         assert r.status_code == 200
         assert len(r.json()) >= 1
 
-    def test_get_auction(self):
-        cr = client.post("/api/auctions/", json={
+    def test_get_auction(self, auth_client):
+        cr = auth_client.post("/api/auctions/", json={
             "name": "Detail Test", "date": "2025-02-01",
         })
         aid = cr.json()["id"]
-        r = client.get(f"/api/auctions/{aid}")
+        r = auth_client.get(f"/api/auctions/{aid}")
         assert r.status_code == 200
         assert r.json()["name"] == "Detail Test"
 
-    def test_update_auction(self):
-        cr = client.post("/api/auctions/", json={
+    def test_update_auction(self, auth_client):
+        cr = auth_client.post("/api/auctions/", json={
             "name": "Old Name", "date": "2025-03-01",
         })
         aid = cr.json()["id"]
-        r = client.put(f"/api/auctions/{aid}", json={"name": "New Name"})
+        r = auth_client.put(f"/api/auctions/{aid}", json={"name": "New Name"})
         assert r.status_code == 200
         assert r.json()["name"] == "New Name"
 
-    def test_delete_auction(self):
-        cr = client.post("/api/auctions/", json={
+    def test_delete_auction(self, auth_client):
+        cr = auth_client.post("/api/auctions/", json={
             "name": "Delete Me", "date": "2025-04-01",
         })
         aid = cr.json()["id"]
-        r = client.delete(f"/api/auctions/{aid}")
+        r = auth_client.delete(f"/api/auctions/{aid}")
         assert r.status_code == 200
-        r2 = client.get(f"/api/auctions/{aid}")
+        r2 = auth_client.get(f"/api/auctions/{aid}")
         assert r2.status_code == 404
 
-    def test_create_item(self):
-        cr = client.post("/api/auctions/", json={
+    def test_create_item(self, auth_client):
+        cr = auth_client.post("/api/auctions/", json={
             "name": "Item Auction", "date": "2025-05-01",
         })
         aid = cr.json()["id"]
-        r = client.post(f"/api/auctions/{aid}/items", json={
+        r = auth_client.post(f"/api/auctions/{aid}/items", json={
             "name": "Test Item", "hammer_price": 50.0,
         })
         assert r.status_code == 200
         assert r.json()["buy_cost_total"] > 0
 
-    def test_update_item(self):
-        cr = client.post("/api/auctions/", json={
+    def test_update_item(self, auth_client):
+        cr = auth_client.post("/api/auctions/", json={
             "name": "Item Update", "date": "2025-06-01",
         })
         aid = cr.json()["id"]
-        ir = client.post(f"/api/auctions/{aid}/items", json={
+        ir = auth_client.post(f"/api/auctions/{aid}/items", json={
             "name": "Item", "hammer_price": 30.0,
         })
         iid = ir.json()["id"]
-        r = client.put(f"/api/auctions/items/{iid}", json={
+        r = auth_client.put(f"/api/auctions/items/{iid}", json={
             "sold_price": 100.0, "status": "sold",
         })
         assert r.status_code == 200
         assert r.json()["net_profit"] is not None
 
-    def test_delete_item(self):
-        cr = client.post("/api/auctions/", json={
+    def test_delete_item(self, auth_client):
+        cr = auth_client.post("/api/auctions/", json={
             "name": "Item Delete", "date": "2025-07-01",
         })
         aid = cr.json()["id"]
-        ir = client.post(f"/api/auctions/{aid}/items", json={
+        ir = auth_client.post(f"/api/auctions/{aid}/items", json={
             "name": "Del Item", "hammer_price": 20.0,
         })
         iid = ir.json()["id"]
-        r = client.delete(f"/api/auctions/items/{iid}")
+        r = auth_client.delete(f"/api/auctions/items/{iid}")
         assert r.status_code == 200
 
-    def test_item_not_found(self):
-        r = client.put("/api/auctions/items/99999", json={"name": "X"})
+    def test_item_not_found(self, auth_client):
+        r = auth_client.put("/api/auctions/items/99999", json={"name": "X"})
         assert r.status_code == 404
 
-    def test_auction_not_found(self):
-        r = client.get("/api/auctions/99999")
+    def test_auction_not_found(self, auth_client):
+        r = auth_client.get("/api/auctions/99999")
         assert r.status_code == 404
 
 
@@ -464,32 +532,32 @@ class TestAPISettings:
 
 
 class TestAPIDashboard:
-    def test_kpis_empty(self):
-        r = client.get("/api/dashboard/kpis")
+    def test_kpis_empty(self, auth_client):
+        r = auth_client.get("/api/dashboard/kpis")
         assert r.status_code == 200
         assert r.json()["total_invested"] == 0
 
-    def test_kpis_with_data(self):
+    def test_kpis_with_data(self, auth_client):
         # Create auction + sold item
-        cr = client.post("/api/auctions/", json={
+        cr = auth_client.post("/api/auctions/", json={
             "name": "KPI Test", "date": "2025-01-01",
         })
         aid = cr.json()["id"]
-        client.post(f"/api/auctions/{aid}/items", json={
+        auth_client.post(f"/api/auctions/{aid}/items", json={
             "name": "Sold Item", "hammer_price": 50.0,
         })
         # Get the item and mark as sold
-        items = client.get(f"/api/auctions/{aid}/items").json()
+        items = auth_client.get(f"/api/auctions/{aid}/items").json()
         iid = items[0]["id"]
-        client.put(f"/api/auctions/items/{iid}", json={
+        auth_client.put(f"/api/auctions/items/{iid}", json={
             "status": "sold", "sold_price": 100.0,
         })
-        r = client.get("/api/dashboard/kpis")
+        r = auth_client.get("/api/dashboard/kpis")
         assert r.status_code == 200
         assert r.json()["total_invested"] > 0
         assert r.json()["total_revenue"] > 0
 
-    def test_chart_endpoints(self):
+    def test_chart_endpoints(self, auth_client):
         """All chart endpoints should return 200."""
         for endpoint in [
             "/api/dashboard/charts/monthly",
@@ -499,5 +567,5 @@ class TestAPIDashboard:
             "/api/dashboard/charts/profit-per-auction",
             "/api/dashboard/charts/cumulative-profit",
         ]:
-            r = client.get(endpoint)
+            r = auth_client.get(endpoint)
             assert r.status_code == 200, f"Failed: {endpoint}"

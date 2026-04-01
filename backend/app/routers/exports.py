@@ -4,12 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Auction, Item
+from app.models import Auction, Item, User
 from app.fees import calculate_fees
 from app.calculators import calculate_ebay_fees
 from app.middleware.limits import check_export_permission, raise_http_error_from_limit_error, LimitError
-from app.auth.jwt import get_optional_user
-from app.models import User
+from app.auth.jwt import require_auth
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 
@@ -85,17 +84,17 @@ def _item_to_row(item):
 
 
 @router.get("/auction/{auction_id}")
-def export_auction(auction_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
-    # Check export permission - skip if no user (dev mode)
-    if current_user:
-        try:
-            check_export_permission(current_user.plan)
-        except LimitError as e:
-            raise_http_error_from_limit_error(e)
-    
-    auction = db.query(Auction).filter(Auction.id == auction_id).first()
+def export_auction(auction_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    # First check if auction exists and belongs to user
+    auction = db.query(Auction).filter(Auction.id == auction_id, Auction.user_id == current_user.id).first()
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
+    
+    # Check export permission
+    try:
+        check_export_permission(current_user.plan)
+    except LimitError as e:
+        raise_http_error_from_limit_error(e)
     items = db.query(Item).filter(Item.auction_id == auction_id).all()
     if not items:
         rows = [["No items in this auction"] + [""] * (len(ITEM_EXPORT_COLUMNS) - 1)]
@@ -112,15 +111,14 @@ def export_auction(auction_id: int, db: Session = Depends(get_db), current_user:
 
 
 @router.get("/inventory")
-def export_inventory(start: str = None, end: str = None, channel: str = None, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
-    # Check export permission - skip if no user (dev mode)
-    if current_user:
-        try:
-            check_export_permission(current_user.plan)
-        except LimitError as e:
-            raise_http_error_from_limit_error(e)
+def export_inventory(start: str = None, end: str = None, channel: str = None, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    # Check export permission
+    try:
+        check_export_permission(current_user.plan)
+    except LimitError as e:
+        raise_http_error_from_limit_error(e)
     
-    query = db.query(Item).join(Auction)
+    query = db.query(Item).join(Auction).filter(Auction.user_id == current_user.id)
     if start:
         query = query.filter(Auction.date >= start)
     if end:
@@ -140,15 +138,17 @@ def export_inventory(start: str = None, end: str = None, channel: str = None, db
 
 
 @router.get("/dashboard/summary")
-def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
-    # Check export permission - skip if no user (dev mode)
-    if current_user:
-        try:
-            check_export_permission(current_user.plan)
-        except LimitError as e:
-            raise_http_error_from_limit_error(e)
+def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    # Check export permission
+    try:
+        check_export_permission(current_user.plan)
+    except LimitError as e:
+        raise_http_error_from_limit_error(e)
     
-    items = db.query(Item).join(Auction).filter(Auction.date.like(f"{year}%")).all()
+    items = db.query(Item).join(Auction).filter(
+        Auction.date.like(f"{year}%"),
+        Auction.user_id == current_user.id
+    ).all()
     monthly = {}
     for item in items:
         auction = db.query(Auction).filter(Auction.id == item.auction_id).first()
@@ -177,15 +177,18 @@ def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), cu
 
 
 @router.get("/tax-summary")
-def export_tax_summary(year: int = 2026, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
-    # Check export permission - skip if no user (dev mode)
-    if current_user:
-        try:
-            check_export_permission(current_user.plan)
-        except LimitError as e:
-            raise_http_error_from_limit_error(e)
+def export_tax_summary(year: int = 2026, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    # Check export permission
+    try:
+        check_export_permission(current_user.plan)
+    except LimitError as e:
+        raise_http_error_from_limit_error(e)
     
-    items = db.query(Item).join(Auction).filter(Auction.date.like(f"{year}%"), Item.status == "sold").all()
+    items = db.query(Item).join(Auction).filter(
+        Auction.date.like(f"{year}%"),
+        Item.status == "sold",
+        Auction.user_id == current_user.id
+    ).all()
     channels = {}
     for item in items:
         ch = item.sale_channel or "ebay"

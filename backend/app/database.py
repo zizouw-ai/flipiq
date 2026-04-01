@@ -57,11 +57,11 @@ def init_db():
     # _migrate_items()
     # _migrate_auctions()
 
-    # Seed default data (commented out to prevent re-seeding on every startup)
-    # db = SessionLocal()
-    # try:
-    #     seed_auction_houses(db)
-    #     seed_shipping_presets(db)
-    # finally:
-    #     db.close()
+    # Seed default data on startup
+    db = SessionLocal()
+    try:
+        seed_auction_houses(db)
+        seed_shipping_presets(db)
+    finally:
+        db.close()
 

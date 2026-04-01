@@ -7,6 +7,7 @@ import AuctionTracker from './pages/AuctionTracker'
 import Dashboard from './pages/Dashboard'
 import Settings from './pages/Settings'
 import AllItems from './pages/AllItems'
+import Profile from './pages/Profile'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
@@ -82,10 +83,22 @@ function Layout() {
           {/* User info & Logout */}
           <div className="mt-auto pt-4 border-t border-surface-700/30 space-y-3">
             {isAuthenticated && user && (
-              <div className="px-3 py-2">
-                <p className="text-xs text-surface-400">Signed in as</p>
-                <p className="text-sm text-surface-200 font-medium truncate">{user.email}</p>
-              </div>
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-brand-600/20 text-brand-400 border border-brand-500/20'
+                      : 'text-surface-400 hover:text-surface-200 hover:bg-surface-700/30'
+                  }`
+                }
+              >
+                <span className="text-lg">👤</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-surface-400">Profile</p>
+                  <p className="text-sm font-medium truncate">{user.email}</p>
+                </div>
+              </NavLink>
             )}
             {isAuthenticated && (
               <button
@@ -115,6 +128,7 @@ function Layout() {
             <Route path="/items" element={<AllItems />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </main>
       </div>

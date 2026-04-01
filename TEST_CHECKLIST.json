@@ -1,0 +1,514 @@
+{
+  "version": "v0.5.2",
+  "date": "2026-04-01",
+  "description": "Comprehensive test checklist for FlipIQ - All Features",
+  "categories": [
+    {
+      "name": "Authentication",
+      "icon": "🔐",
+      "tests": [
+        {
+          "id": "AUTH-001",
+          "feature": "Dev Mode Login",
+          "steps": ["Open app", "Click 'Dev Mode (Skip Login)'"],
+          "expected": "Redirects to app, all features work without registration",
+          "status": "pending"
+        },
+        {
+          "id": "AUTH-002",
+          "feature": "User Registration",
+          "steps": ["Click 'Create one'", "Fill name, email, password", "Click Register"],
+          "expected": "Account created, redirected to login page with success message",
+          "status": "pending",
+          "password_requirements": [
+            "At least 8 characters",
+            "One uppercase letter (A-Z)",
+            "One number (0-9)",
+            "One special character (!@#$...)"
+          ]
+        },
+        {
+          "id": "AUTH-003",
+          "feature": "User Login",
+          "steps": ["Enter email and password", "Click 'Sign In'"],
+          "expected": "Logged in, redirected to app, user email shown in sidebar",
+          "status": "pending"
+        },
+        {
+          "id": "AUTH-004",
+          "feature": "Logout",
+          "steps": ["Click 'Sign Out' in sidebar"],
+          "expected": "Redirected to login page",
+          "status": "pending"
+        },
+        {
+          "id": "AUTH-005",
+          "feature": "Protected Routes",
+          "steps": ["Try accessing / without login"],
+          "expected": "Redirected to login page",
+          "status": "pending"
+        },
+        {
+          "id": "AUTH-006",
+          "feature": "Token Persistence",
+          "steps": ["Login", "Refresh page"],
+          "expected": "Still logged in, user data persisted",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "name": "Pricing Calculator",
+      "icon": "⚡",
+      "tests": [
+        {
+          "id": "CALC-001",
+          "feature": "eBay Category Dropdown",
+          "steps": ["Go to Calculator", "Click category dropdown"],
+          "expected": "Shows 13 eBay categories",
+          "status": "pending"
+        },
+        {
+          "id": "CALC-002",
+          "feature": "Mode 1: Forward Pricing",
+          "steps": ["Select Mode 1", "Enter hammer price (e.g., $50)", "Click Calculate"],
+          "expected": "Shows sell price, fees, profit calculation",
+          "status": "pending"
+        },
+        {
+          "id": "CALC-003",
+          "feature": "Mode 2: Reverse Lookup",
+          "steps": ["Select Mode 2", "Enter sold price", "Enter hammer price", "Click Calculate"],
+          "expected": "Shows profit/loss calculation",
+          "status": "pending"
+        },
+        {
+          "id": "CALC-004",
+          "feature": "Mode 3: Lot Splitter",
+          "steps": ["Select Mode 3", "Enter total hammer price", "Enter number of items", "Click Calculate"],
+          "expected": "Shows per-item costs",
+          "status": "pending"
+        },
+        {
+          "id": "CALC-005",
+          "feature": "Mode 4: Max Ad Spend",
+          "steps": ["Select Mode 4", "Enter target profit", "Click Calculate"],
+          "expected": "Shows maximum promoted listing percentage",
+          "status": "pending"
+        },
+        {
+          "id": "CALC-006",
+          "feature": "Mode 5: Price Sensitivity",
+          "steps": ["Select Mode 5", "Enter hammer price", "Move slider"],
+          "expected": "Live profit updates as slider moves",
+          "status": "pending"
+        },
+        {
+          "id": "CALC-007",
+          "feature": "Channel Selection",
+          "steps": ["Select Facebook Marketplace channel", "Enter price", "Click Calculate"],
+          "expected": "Fee calculation changes based on channel",
+          "status": "pending"
+        },
+        {
+          "id": "CALC-008",
+          "feature": "Alert Banner",
+          "steps": ["Enter unprofitable price combination", "Click Calculate"],
+          "expected": "Shows RED/ORANGE/GREEN alert banner",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "name": "Auction Tracker",
+      "icon": "🔨",
+      "tests": [
+        {
+          "id": "AUCT-001",
+          "feature": "Create Auction",
+          "steps": ["Go to Auction Tracker", "Click 'New Auction'", "Fill name and date", "Click Save"],
+          "expected": "Auction appears in list",
+          "status": "pending"
+        },
+        {
+          "id": "AUCT-002",
+          "feature": "Edit Auction",
+          "steps": ["Click on auction", "Edit name", "Click Save"],
+          "expected": "Name updated in list",
+          "status": "pending"
+        },
+        {
+          "id": "AUCT-003",
+          "feature": "Delete Auction",
+          "steps": ["Click 'Delete' on auction", "Confirm deletion"],
+          "expected": "Auction removed from list",
+          "status": "pending"
+        },
+        {
+          "id": "AUCT-004",
+          "feature": "Add Item to Auction",
+          "steps": ["Click on auction", "Click 'Add Item'", "Fill item details", "Save"],
+          "expected": "Item saved to auction",
+          "status": "pending"
+        },
+        {
+          "id": "AUCT-005",
+          "feature": "Edit Item",
+          "steps": ["Click on item", "Edit details", "Click Save"],
+          "expected": "Item updated",
+          "status": "pending"
+        },
+        {
+          "id": "AUCT-006",
+          "feature": "Delete Item",
+          "steps": ["Click 'Delete' on item"],
+          "expected": "Item removed",
+          "status": "pending"
+        },
+        {
+          "id": "AUCT-007",
+          "feature": "Export Auction",
+          "steps": ["Click 'Export' button on auction"],
+          "expected": "Excel file downloads",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "name": "All Items Page",
+      "icon": "📦",
+      "tests": [
+        {
+          "id": "ITEM-001",
+          "feature": "View All Items",
+          "steps": ["Click 'All Items' in sidebar"],
+          "expected": "List of all items displayed with pagination",
+          "status": "pending"
+        },
+        {
+          "id": "ITEM-002",
+          "feature": "Search Items",
+          "steps": ["Type in search box"],
+          "expected": "Filters items by name",
+          "status": "pending"
+        },
+        {
+          "id": "ITEM-003",
+          "feature": "Filter by Status",
+          "steps": ["Select status from dropdown"],
+          "expected": "Shows only matching items",
+          "status": "pending"
+        },
+        {
+          "id": "ITEM-004",
+          "feature": "Filter by Category",
+          "steps": ["Select category"],
+          "expected": "Shows only matching items",
+          "status": "pending"
+        },
+        {
+          "id": "ITEM-005",
+          "feature": "Filter by Date",
+          "steps": ["Set date range"],
+          "expected": "Shows items in range",
+          "status": "pending"
+        },
+        {
+          "id": "ITEM-006",
+          "feature": "Sort Items",
+          "steps": ["Click column header"],
+          "expected": "Items sorted by column",
+          "status": "pending"
+        },
+        {
+          "id": "ITEM-007",
+          "feature": "Pagination",
+          "steps": ["Click page numbers"],
+          "expected": "Shows different items",
+          "status": "pending"
+        },
+        {
+          "id": "ITEM-008",
+          "feature": "View Item Detail",
+          "steps": ["Click on item"],
+          "expected": "Modal opens with details",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "icon": "📊",
+      "tests": [
+        {
+          "id": "DASH-001",
+          "feature": "KPI Cards",
+          "steps": ["View dashboard"],
+          "expected": "Shows total revenue, profit, items sold, etc.",
+          "status": "pending"
+        },
+        {
+          "id": "DASH-002",
+          "feature": "Channel Summary Chart",
+          "steps": ["View dashboard"],
+          "expected": "Pie chart of sales by channel",
+          "status": "pending"
+        },
+        {
+          "id": "DASH-003",
+          "feature": "Monthly Profit Chart",
+          "steps": ["View dashboard"],
+          "expected": "Line chart of monthly profit",
+          "status": "pending"
+        },
+        {
+          "id": "DASH-004",
+          "feature": "ROI by Category",
+          "steps": ["View dashboard"],
+          "expected": "Bar chart of ROI by category",
+          "status": "pending"
+        },
+        {
+          "id": "DASH-005",
+          "feature": "Best/Worst Items",
+          "steps": ["View dashboard"],
+          "expected": "Lists top/bottom performers",
+          "status": "pending"
+        },
+        {
+          "id": "DASH-006",
+          "feature": "Filter by Channel",
+          "steps": ["Select channel filter"],
+          "expected": "Charts update to show filtered data",
+          "status": "pending"
+        },
+        {
+          "id": "DASH-007",
+          "feature": "Filter by Date",
+          "steps": ["Set date range"],
+          "expected": "Charts update to show filtered data",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "name": "Profile Page",
+      "icon": "👤",
+      "tests": [
+        {
+          "id": "PROF-001",
+          "feature": "View Profile",
+          "steps": ["Click 'Profile' in sidebar"],
+          "expected": "Shows user email, name, and current plan",
+          "status": "pending"
+        },
+        {
+          "id": "PROF-002",
+          "feature": "View Plan Limits",
+          "steps": ["Go to Profile page"],
+          "expected": "Shows max items, auction houses allowed",
+          "status": "pending"
+        },
+        {
+          "id": "PROF-003",
+          "feature": "Update Name",
+          "steps": ["Enter new name", "Click Update"],
+          "expected": "Name updated successfully",
+          "status": "pending"
+        },
+        {
+          "id": "PROF-004",
+          "feature": "Update Email",
+          "steps": ["Enter new email", "Click Update"],
+          "expected": "Email updated successfully",
+          "status": "pending"
+        },
+        {
+          "id": "PROF-005",
+          "feature": "Change Password",
+          "steps": ["Enter current password", "Enter new password", "Confirm new password", "Click Change"],
+          "expected": "Password changed successfully",
+          "status": "pending"
+        },
+        {
+          "id": "PROF-006",
+          "feature": "Upgrade Plan Button",
+          "steps": ["Click 'Upgrade Plan' button"],
+          "expected": "Redirects to billing/upgrade page",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "icon": "⚙️",
+      "tests": [
+        {
+          "id": "SET-001",
+          "feature": "General Settings",
+          "steps": ["Click 'Settings' → General"],
+          "expected": "Can update preferences",
+          "status": "pending"
+        },
+        {
+          "id": "SET-002",
+          "feature": "Auction Houses",
+          "steps": ["Click 'Auction Houses'"],
+          "expected": "List of auction houses displayed",
+          "status": "pending"
+        },
+        {
+          "id": "SET-003",
+          "feature": "Add Auction House",
+          "steps": ["Click 'New' → Fill form → Save"],
+          "expected": "House added to list",
+          "status": "pending"
+        },
+        {
+          "id": "SET-004",
+          "feature": "Shipping Presets",
+          "steps": ["Click 'Shipping'"],
+          "expected": "List of shipping presets displayed",
+          "status": "pending"
+        },
+        {
+          "id": "SET-005",
+          "feature": "Add Shipping Preset",
+          "steps": ["Click 'New' → Fill form → Save"],
+          "expected": "Preset added to list",
+          "status": "pending"
+        },
+        {
+          "id": "SET-006",
+          "feature": "Templates",
+          "steps": ["Click 'Templates'"],
+          "expected": "List of item templates displayed",
+          "status": "pending"
+        },
+        {
+          "id": "SET-007",
+          "feature": "Add Template",
+          "steps": ["Click 'New' → Fill form → Save"],
+          "expected": "Template added to list",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "name": "Export Features",
+      "icon": "💾",
+      "tests": [
+        {
+          "id": "EXP-001",
+          "feature": "Export Auction",
+          "steps": ["Go to Auction Tracker", "Click 'Export' on auction"],
+          "expected": "Excel file downloads with auction data",
+          "status": "pending"
+        },
+        {
+          "id": "EXP-002",
+          "feature": "Export Inventory",
+          "steps": ["Go to All Items", "Click 'Export'"],
+          "expected": "Excel file downloads with inventory",
+          "status": "pending"
+        },
+        {
+          "id": "EXP-003",
+          "feature": "Export Dashboard",
+          "steps": ["Go to Dashboard", "Click 'Export'"],
+          "expected": "Excel file downloads with summary",
+          "status": "pending"
+        },
+        {
+          "id": "EXP-004",
+          "feature": "Export Tax Summary",
+          "steps": ["Go to Settings → Tax Report", "Click 'Export'"],
+          "expected": "Excel file downloads with tax data",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "name": "Data Isolation (CRITICAL)",
+      "icon": "🔒",
+      "description": "Verify users CANNOT see each other's data",
+      "tests": [
+        {
+          "id": "ISO-001",
+          "feature": "User 1 Creates Auction",
+          "steps": [
+            "Register as user1@test.com",
+            "Login as User 1",
+            "Create an auction named 'User1 Auction'",
+            "Add items to the auction"
+          ],
+          "expected": "Auction and items created successfully",
+          "status": "pending"
+        },
+        {
+          "id": "ISO-002",
+          "feature": "User 2 Cannot See User 1's Auction",
+          "steps": [
+            "Open incognito/private window",
+            "Register as user2@test.com",
+            "Login as User 2",
+            "Go to Auction Tracker"
+          ],
+          "expected": "Auction list is EMPTY (no 'User1 Auction' visible)",
+          "status": "pending",
+          "critical": true
+        },
+        {
+          "id": "ISO-003",
+          "feature": "User 2 Cannot Access User 1's Items",
+          "steps": [
+            "As User 2, go to All Items"
+          ],
+          "expected": "Items list is EMPTY or shows only User 2's items",
+          "status": "pending",
+          "critical": true
+        },
+        {
+          "id": "ISO-004",
+          "feature": "User 2 Dashboard Isolated",
+          "steps": [
+            "As User 2, go to Dashboard"
+          ],
+          "expected": "Dashboard shows $0 revenue, no items (clean slate)",
+          "status": "pending",
+          "critical": true
+        },
+        {
+          "id": "ISO-005",
+          "feature": "User 1 Still Has Their Data",
+          "steps": [
+            "Go back to User 1's window",
+            "Refresh the page"
+          ],
+          "expected": "User 1 still sees 'User1 Auction' and their items",
+          "status": "pending",
+          "critical": true
+        }
+      ]
+    }
+  ],
+  "test_data": {
+    "user1": {
+      "email": "user1@test.com",
+      "password": "Test123!",
+      "name": "User One"
+    },
+    "user2": {
+      "email": "user2@test.com",
+      "password": "Test123!",
+      "name": "User Two"
+    }
+  },
+  "notes": [
+    "Run tests in order for best results",
+    "Data isolation tests are CRITICAL - do not skip",
+    "Use incognito/private window for User 2 tests",
+    "All passwords must meet requirements: 8+ chars, uppercase, number, special char",
+    "Report any failures immediately"
+  ]
+}

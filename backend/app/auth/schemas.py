@@ -105,3 +105,30 @@ class MessageResponse(BaseModel):
     model_config = {"json_schema_extra": {
         "example": {"message": "Operation completed successfully"}
     }}
+
+
+class UserUpdate(BaseModel):
+    """Schema for updating user profile."""
+    name: Optional[str] = Field(None, description="User's full name")
+    email: Optional[EmailStr] = Field(None, description="User email address")
+
+
+class PasswordUpdate(BaseModel):
+    """Schema for changing password."""
+    current_password: str = Field(..., min_length=8, description="Current password")
+    new_password: str = Field(..., min_length=8, description="New password")
+
+
+class PlanResponse(BaseModel):
+    """Schema for current plan response."""
+    plan: str
+    plan_name: str
+    limits: dict
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "plan": "free",
+            "plan_name": "Free",
+            "limits": {"max_items": 50, "max_auction_houses": 2}
+        }
+    }}

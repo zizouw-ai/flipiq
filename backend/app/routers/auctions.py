@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
-from app.models import Auction, Item
+from app.models import Auction, Item, User
 from app.schemas import (
     AuctionCreate, AuctionUpdate, AuctionResponse, AuctionListResponse,
     ItemCreate, ItemUpdate, ItemResponse,
@@ -13,6 +13,7 @@ from app.schemas import (
 from app.calculators import calculate_encore_cost, calculate_ebay_fees, calculate_net_profit
 from app.fees import calculate_fees
 from app.middleware.limits import check_item_limit, get_item_count, raise_http_error_from_limit_error
+from app.auth.jwt import require_auth
 
 
 router = APIRouter(prefix="/api/auctions", tags=["auctions"])
@@ -55,8 +56,8 @@ def _recalc_item(item: Item):
 # --- Auctions CRUD ---
 
 @router.get("/", response_model=list[AuctionListResponse])
-def list_auctions(db: Session = Depends(get_db)):
-    auctions = db.query(Auction).order_by(Auction.date.desc()).all()
+def list_auctions(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    auctions = db.query(Auction).filter(Auction.user_id == current_user.id).order_by(Auction.date.desc()).all()
     results = []
     for a in auctions:
         item_count = db.query(Item).filter(Item.auction_id == a.id).count()
@@ -69,9 +70,9 @@ def list_auctions(db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=AuctionResponse)
-def create_auction(req: AuctionCreate, db: Session = Depends(get_db)):
+def create_auction(req: AuctionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     logger.info(f"Received create auction request: {req.model_dump()}")
-    auction = Auction(**req.model_dump())
+    auction = Auction(**req.model_dump(), user_id=current_user.id)
     logger.info(f"Auction object before adding to DB: {auction}")
     db.add(auction)
     logger.info("Auction object added to session. Committing...")
@@ -82,16 +83,18 @@ def create_auction(req: AuctionCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{auction_id}", response_model=AuctionResponse)
-def get_auction(auction_id: int, db: Session = Depends(get_db)):
-    auction = db.query(Auction).options(joinedload(Auction.items)).filter(Auction.id == auction_id).first()
+def get_auction(auction_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    auction = db.query(Auction).options(joinedload(Auction.items)).filter(
+        Auction.id == auction_id, Auction.user_id == current_user.id
+    ).first()
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     return auction
 
 
 @router.put("/{auction_id}", response_model=AuctionResponse)
-def update_auction(auction_id: int, req: AuctionUpdate, db: Session = Depends(get_db)):
-    auction = db.query(Auction).filter(Auction.id == auction_id).first()
+def update_auction(auction_id: int, req: AuctionUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    auction = db.query(Auction).filter(Auction.id == auction_id, Auction.user_id == current_user.id).first()
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     for k, v in req.model_dump(exclude_unset=True).items():
@@ -102,8 +105,8 @@ def update_auction(auction_id: int, req: AuctionUpdate, db: Session = Depends(ge
 
 
 @router.delete("/{auction_id}")
-def delete_auction(auction_id: int, db: Session = Depends(get_db)):
-    auction = db.query(Auction).filter(Auction.id == auction_id).first()
+def delete_auction(auction_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    auction = db.query(Auction).filter(Auction.id == auction_id, Auction.user_id == current_user.id).first()
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     db.delete(auction)
@@ -114,27 +117,30 @@ def delete_auction(auction_id: int, db: Session = Depends(get_db)):
 # --- Items CRUD ---
 
 @router.get("/{auction_id}/items", response_model=list[ItemResponse])
-def list_items(auction_id: int, db: Session = Depends(get_db)):
+def list_items(auction_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    # Verify auction belongs to user
+    auction = db.query(Auction).filter(Auction.id == auction_id, Auction.user_id == current_user.id).first()
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
     return db.query(Item).filter(Item.auction_id == auction_id).all()
 
 
 @router.post("/{auction_id}/items", response_model=ItemResponse)
-def create_item(auction_id: int, req: ItemCreate, db: Session = Depends(get_db)):
+def create_item(auction_id: int, req: ItemCreate, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     # Check item limit before creating
     try:
         current_item_count = get_item_count(db)
-        # TODO: Get actual user plan from auth
-        check_item_limit("free", current_item_count)
+        check_item_limit(current_user.plan, current_item_count)
     except Exception as e:
         if hasattr(e, "error_code"):
             raise_http_error_from_limit_error(e)
         else:
             raise
     
-    auction = db.query(Auction).filter(Auction.id == auction_id).first()
+    auction = db.query(Auction).filter(Auction.id == auction_id, Auction.user_id == current_user.id).first()
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
-    item = Item(auction_id=auction_id, **req.model_dump())
+    item = Item(auction_id=auction_id, user_id=current_user.id, **req.model_dump())
     _recalc_item(item)
     db.add(item)
     db.commit()
@@ -143,8 +149,10 @@ def create_item(auction_id: int, req: ItemCreate, db: Session = Depends(get_db))
 
 
 @router.put("/items/{item_id}", response_model=ItemResponse)
-def update_item(item_id: int, req: ItemUpdate, db: Session = Depends(get_db)):
-    item = db.query(Item).filter(Item.id == item_id).first()
+def update_item(item_id: int, req: ItemUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    item = db.query(Item).join(Auction).filter(
+        Item.id == item_id, Auction.user_id == current_user.id
+    ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     for k, v in req.model_dump(exclude_unset=True).items():
@@ -156,8 +164,10 @@ def update_item(item_id: int, req: ItemUpdate, db: Session = Depends(get_db)):
 
 
 @router.delete("/items/{item_id}")
-def delete_item(item_id: int, db: Session = Depends(get_db)):
-    item = db.query(Item).filter(Item.id == item_id).first()
+def delete_item(item_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    item = db.query(Item).join(Auction).filter(
+        Item.id == item_id, Auction.user_id == current_user.id
+    ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     db.delete(item)

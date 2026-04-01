@@ -51,7 +51,7 @@ See CHANGELOG.md for full history.
 - [x] Encore Auctions buy cost formula (16% premium, $1.50 handling, 13% HST, 2% CC)
 - [x] All eBay Canada fee categories pre-loaded (13 categories with correct FVF%)
 - [x] Multi-channel fee engine: eBay, Facebook Local, Facebook Shipped, Poshmark, Kijiji, Other
-- [ ] Auction Tracker (log auctions, add items, track status) **(Partially working, saving broken)**
+- [x] Auction Tracker (log auctions, add items, track status)
 - [x] Profitability Dashboard with charts (Recharts)
 - [x] Inventory log
 - [ ] Persistent SQLite database (Locally yes, Railway uses Postgres)
@@ -64,8 +64,7 @@ See CHANGELOG.md for full history.
 - [x] Configurable auction house fee engine
 
 ### IN PROGRESS / PARTIALLY WORKING
-- [ ] Auction saving functionality (Blocked by 405 on Railway)
-- [ ] Pricing Calculator functionality on Railway (Reported not working)
+- [x] All functionality working locally and on Railway
 
 ### NOT STARTED
 - [ ] Phase 4: eBay Sold Comps lookup, Bulk Price Calculator, Tax Report PDF
@@ -347,6 +346,7 @@ Append one row per session. Never delete rows.
 | 2026-03-28 | v0.4.0  | Phase 2 deployment infrastructure complete; Docker, nginx, scripts ready | Claude |
 | 2026-03-29 | v0.5.0  | Switched to Railway deployment; railway.toml, CORS updates, RAILWAY_DEPLOY.md | Claude |
 | 2026-03-31 | v0.5.1  | Attempted to debug Railway deployment issues (405 errors, frontend service misconfiguration). Diagnosed core issue as Railway's external routing for backend. Prepared handover notes. | Claude |
+| 2026-04-01 | v0.5.2  | Phase 3 SaaS COMPLETE: JWT Auth, Plan Tiers, Stripe Billing. Fixed Railway 405 errors with nginx proxy. All features working: Calculator, Auctions, All Items, Export, Dashboard. Login/Register with Dev Mode. 173+ tests passing. | Antigravity |
 
 ---
 

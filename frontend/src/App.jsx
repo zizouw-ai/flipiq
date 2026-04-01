@@ -1,11 +1,14 @@
-import { Routes, Route, NavLink } from 'react-router-dom'
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, createContext, useContext } from 'react'
 import { api } from './api'
+import { useAuthStore } from './store/authStore'
 import Calculator from './pages/Calculator'
 import AuctionTracker from './pages/AuctionTracker'
 import Dashboard from './pages/Dashboard'
 import Settings from './pages/Settings'
 import AllItems from './pages/AllItems'
+import Login from './pages/Login'
+import Register from './pages/Register'
 
 const navItems = [
   { path: '/', label: 'Calculator', icon: '⚡' },
@@ -19,9 +22,21 @@ export const CurrencyContext = createContext({ currency: 'CAD', rate: 1, toggle:
 
 export function useCurrency() { return useContext(CurrencyContext) }
 
-export default function App() {
+function ProtectedRoute({ children }) {
+  const { isAuthenticated, devMode } = useAuthStore()
+  const location = useLocation()
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return children
+}
+
+function Layout() {
   const [currency, setCurrency] = useState('CAD')
   const [rate, setRate] = useState({ cad_to_usd: 0.73, usd_to_cad: 1.37 })
+  const { user, logout, isAuthenticated, devMode } = useAuthStore()
 
   useEffect(() => {
     api.getCurrencyRate().then(setRate).catch(() => {})
@@ -41,6 +56,9 @@ export default function App() {
               FlipIQ
             </h1>
             <p className="text-xs text-surface-400 mt-1">Multi-Channel Reseller Calculator</p>
+            {devMode && (
+              <p className="text-xs text-amber-400 mt-1 font-medium">Dev Mode</p>
+            )}
           </div>
           <div className="flex flex-col gap-1 flex-1">
             {navItems.map(item => (
@@ -61,8 +79,23 @@ export default function App() {
               </NavLink>
             ))}
           </div>
-          {/* Currency Toggle */}
+          {/* User info & Logout */}
           <div className="mt-auto pt-4 border-t border-surface-700/30 space-y-3">
+            {isAuthenticated && user && (
+              <div className="px-3 py-2">
+                <p className="text-xs text-surface-400">Signed in as</p>
+                <p className="text-sm text-surface-200 font-medium truncate">{user.email}</p>
+              </div>
+            )}
+            {isAuthenticated && (
+              <button
+                onClick={logout}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-surface-800/50 border border-surface-700/30 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-surface-400 text-sm font-medium transition-all duration-200"
+              >
+                <span>🚪</span>
+                Sign Out
+              </button>
+            )}
             <button onClick={toggle} id="currency-toggle"
               className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-surface-800/50 border border-surface-700/30 hover:bg-surface-700/30 transition-all duration-200 group">
               <span className="text-xs text-surface-400 group-hover:text-surface-300">{currency === 'CAD' ? '🇨🇦 CAD' : '🇺🇸 USD'}</span>
@@ -86,5 +119,19 @@ export default function App() {
         </main>
       </div>
     </CurrencyContext.Provider>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/*" element={
+        <ProtectedRoute>
+          <Layout />
+        </ProtectedRoute>
+      } />
+    </Routes>
   )
 }

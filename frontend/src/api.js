@@ -2,17 +2,33 @@
 const API_BASE = import.meta.env.VITE_API_URL || '';
 const API = `${API_BASE}/api`;
 
+import { useAuthStore } from './store/authStore'
+
 async function request(url, options = {}) {
+  const authHeaders = useAuthStore.getState().getAuthHeaders()
   const res = await fetch(`${API}${url}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { ...authHeaders, ...options.headers },
     ...options,
   });
+  if (res.status === 401) {
+    useAuthStore.getState().logout()
+    window.location.href = '/login'
+    throw new Error('Session expired. Please log in again.')
+  }
   if (!res.ok) throw new Error(`API Error: ${res.status}`);
   return res.json();
 }
 
 async function downloadFile(url) {
-  const res = await fetch(`${API}${url}`);
+  const authHeaders = useAuthStore.getState().getAuthHeaders()
+  const res = await fetch(`${API}${url}`, {
+    headers: authHeaders.Authorization ? { Authorization: authHeaders.Authorization } : {},
+  });
+  if (res.status === 401) {
+    useAuthStore.getState().logout()
+    window.location.href = '/login'
+    throw new Error('Session expired. Please log in again.')
+  }
   if (!res.ok) throw new Error(`Download Error: ${res.status}`);
   const blob = await res.blob();
   const disposition = res.headers.get('content-disposition') || '';
@@ -37,6 +53,39 @@ export const CHANNELS = [
 export const CHANNEL_MAP = Object.fromEntries(CHANNELS.map(c => [c.value, c]));
 
 export const api = {
+  // Auth
+  login: async (email, password) => {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || 'Login failed')
+    }
+    return res.json()
+  },
+
+  register: async (name, email, password) => {
+    const res = await fetch(`${API}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || 'Registration failed')
+    }
+    return res.json()
+  },
+
+  logout: () => {
+    useAuthStore.getState().logout()
+  },
+
+  getMe: () => request('/auth/me'),
+
   // Calculator
   getCategories: () => request('/calculator/categories'),
   calcEncoreCost: (data) => request('/calculator/encore-cost', { method: 'POST', body: JSON.stringify(data) }),

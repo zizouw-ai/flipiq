@@ -7,8 +7,9 @@ from app.database import get_db
 from app.models import Auction, Item
 from app.fees import calculate_fees
 from app.calculators import calculate_ebay_fees
-from app.middleware.limits import check_export_permission, raise_http_error_from_limit_error
-from app.routers.limits import get_current_user
+from app.middleware.limits import check_export_permission, raise_http_error_from_limit_error, LimitError
+from app.auth.jwt import get_optional_user
+from app.models import User
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 
@@ -84,16 +85,13 @@ def _item_to_row(item):
 
 
 @router.get("/auction/{auction_id}")
-def export_auction(auction_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    # Check export permission before exporting
-    try:
-        
-        check_export_permission(current_user.plan)
-    except Exception as e:
-        if hasattr(e, "error_code"):
+def export_auction(auction_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    # Check export permission - skip if no user (dev mode)
+    if current_user:
+        try:
+            check_export_permission(current_user.plan)
+        except LimitError as e:
             raise_http_error_from_limit_error(e)
-        else:
-            raise
     
     auction = db.query(Auction).filter(Auction.id == auction_id).first()
     if not auction:
@@ -114,16 +112,13 @@ def export_auction(auction_id: int, db: Session = Depends(get_db), current_user 
 
 
 @router.get("/inventory")
-def export_inventory(start: str = None, end: str = None, channel: str = None, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    # Check export permission before exporting
-    try:
-        
-        check_export_permission(current_user.plan)
-    except Exception as e:
-        if hasattr(e, "error_code"):
+def export_inventory(start: str = None, end: str = None, channel: str = None, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    # Check export permission - skip if no user (dev mode)
+    if current_user:
+        try:
+            check_export_permission(current_user.plan)
+        except LimitError as e:
             raise_http_error_from_limit_error(e)
-        else:
-            raise
     
     query = db.query(Item).join(Auction)
     if start:
@@ -145,16 +140,13 @@ def export_inventory(start: str = None, end: str = None, channel: str = None, db
 
 
 @router.get("/dashboard/summary")
-def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    # Check export permission before exporting
-    try:
-        
-        check_export_permission(current_user.plan)
-    except Exception as e:
-        if hasattr(e, "error_code"):
+def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    # Check export permission - skip if no user (dev mode)
+    if current_user:
+        try:
+            check_export_permission(current_user.plan)
+        except LimitError as e:
             raise_http_error_from_limit_error(e)
-        else:
-            raise
     
     items = db.query(Item).join(Auction).filter(Auction.date.like(f"{year}%")).all()
     monthly = {}
@@ -185,16 +177,13 @@ def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), cu
 
 
 @router.get("/tax-summary")
-def export_tax_summary(year: int = 2026, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    # Check export permission before exporting
-    try:
-        
-        check_export_permission(current_user.plan)
-    except Exception as e:
-        if hasattr(e, "error_code"):
+def export_tax_summary(year: int = 2026, db: Session = Depends(get_db), current_user: User = Depends(get_optional_user)):
+    # Check export permission - skip if no user (dev mode)
+    if current_user:
+        try:
+            check_export_permission(current_user.plan)
+        except LimitError as e:
             raise_http_error_from_limit_error(e)
-        else:
-            raise
     
     items = db.query(Item).join(Auction).filter(Auction.date.like(f"{year}%"), Item.status == "sold").all()
     channels = {}

@@ -47,7 +47,7 @@ def seed_shipping_presets(db):
 
 def init_db():
     from app.models import (  # noqa
-        Auction, Item, Calculation, UserSetting,
+        User, Auction, Item, Calculation, UserSetting,
         AuctionHouseConfig, ShippingPreset, ItemTemplate,
     )
     Base.metadata.create_all(bind=engine)

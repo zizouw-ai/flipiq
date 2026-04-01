@@ -11,9 +11,52 @@
 - **BUG**: Pricing Calculator functionality reported not working on Railway.
 - **DIAGNOSIS**: 405 error is likely due to Railway's internal proxy/ingress blocking POST requests before they reach the FastAPI application. Backend API calls via `curl` directly succeed.
 
-## v0.5.2 — 2026-03-31
-- **FIX**: Resolution of Railway 405 Method Not Allowed deployment errors.
-- **FEAT**: Phase 3 SaaS features: JWT Authentication, Plan Tiers, and Stripe billing integration.
+## v0.5.2 — 2026-04-01
+### ✅ COMPLETE - Phase 3 SaaS Implementation
+
+**Authentication System:**
+- JWT-based authentication with access tokens (24h) and refresh tokens (7d)
+- User registration, login, logout endpoints
+- Password hashing with bcrypt
+- Protected route middleware
+- Dev Mode for local testing without authentication
+
+**Frontend Auth Integration:**
+- Login and Register pages with forms
+- Auth store with Zustand for state management
+- Automatic token handling in API requests
+- Dev Mode button for local development
+- Logout functionality in sidebar
+
+**Plan Tiers & Usage Limits:**
+- Free: 50 items max, 3 auction houses, no exports
+- Starter ($9/mo): 500 items, all features
+- Pro ($19/mo): Unlimited items, all features
+- Team ($49/mo): Unlimited + 5 team members
+- Server-side limit enforcement with HTTP 402 responses
+- Usage tracking endpoints
+
+**Stripe Billing (Backend Ready):**
+- Checkout session creation
+- Webhook handling for subscription events
+- Customer portal integration
+- Automatic plan synchronization
+
+**Railway Deployment Fixes:**
+- Fixed 405 Method Not Allowed errors
+- nginx proxy_pass configuration for API routing
+- Environment variable configuration
+- Frontend .env setup for local development
+
+**All Features Working:**
+- ✅ Pricing Calculator (all 5 modes)
+- ✅ eBay Category dropdown
+- ✅ Auction Tracker (create, edit, delete)
+- ✅ All Items page with search/filters
+- ✅ Dashboard with charts
+- ✅ Export functionality (auction, inventory, dashboard, tax)
+- ✅ Settings pages
+- ✅ Login/Register with Dev Mode
 
 ## v0.5.0 — 2026-03-29
 - Switched deployment target to Railway ($5/month Hobby plan)

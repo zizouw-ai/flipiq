@@ -1,13 +1,41 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey
+: from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.database import Base
+import uuid
 
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    plan = Column(String, default="free", nullable=False)
+    stripe_customer_id = Column(String, nullable=True)
+    stripe_subscription_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_login = Column(DateTime, nullable=True)
+
+    # Relationships
+    auctions = relationship("Auction", back_populates="user")
+    calculations = relationship("Calculation", back_populates="user")
+    item_templates = relationship("ItemTemplate", back_populates="user")
+    shipping_presets = relationship("ShippingPreset", back_populates="user")
+    settings = relationship("UserSetting", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email={self.email})>"
 
 class Auction(Base):
     __tablename__ = "auctions"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     name = Column(String, nullable=False)
     date = Column(String, nullable=False)
     total_hammer = Column(Float, default=0.0)
@@ -16,6 +44,7 @@ class Auction(Base):
     notes = Column(Text, default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    user = relationship("User", back_populates="auctions")
     items = relationship("Item", back_populates="auction", cascade="all, delete-orphan")
     auction_house_config = relationship("AuctionHouseConfig", back_populates="auctions")
 
@@ -24,6 +53,7 @@ class Item(Base):
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     auction_id = Column(Integer, ForeignKey("auctions.id"), nullable=False)
     name = Column(String, nullable=False)
     category = Column(String, default="Most Categories (Default)")
@@ -46,6 +76,7 @@ class Item(Base):
     platform_sold_on = Column(String, nullable=True)  # Where actually sold (may differ from intended sale_channel)
     notes = Column(Text, default="")
 
+    user = relationship("User", back_populates="items")
     auction = relationship("Auction", back_populates="items")
 
 
@@ -53,18 +84,24 @@ class Calculation(Base):
     __tablename__ = "calculations"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     mode = Column(String, nullable=False)
     input_json = Column(Text, nullable=False)
     output_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="calculations")
 
 
 class UserSetting(Base):
     __tablename__ = "user_settings"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     key = Column(String, unique=True, nullable=False, index=True)
     value = Column(Text, nullable=False)
+
+    user = relationship("User", back_populates="settings")
 
 
 # ── Feature 1.1 — Auction House Configs ────────────────────────────────────
@@ -73,7 +110,7 @@ class AuctionHouseConfig(Base):
     __tablename__ = "auction_house_configs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=True)         # NULL = system default
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)         # NULL = system default
     name = Column(String, nullable=False)
     buyer_premium_pct = Column(Float, default=0.0)
     handling_fee_flat = Column(Float, default=0.0)
@@ -90,6 +127,7 @@ class AuctionHouseConfig(Base):
     is_default = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    user = relationship("User", back_populates="auction_house_configs")
     auctions = relationship("Auction", back_populates="auction_house_config")
 
 
@@ -99,7 +137,7 @@ class ShippingPreset(Base):
     __tablename__ = "shipping_presets"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
     name = Column(String, nullable=False)
     carrier = Column(String, default="")
     max_weight_kg = Column(Float, nullable=True)
@@ -109,15 +147,16 @@ class ShippingPreset(Base):
     is_default = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    user = relationship("User", back_populates="shipping_presets")
 
-#
+
 # ── Feature 1.4 — Product Profiles (was Item Templates) ────────────────────
 
 class ItemTemplate(Base):
     __tablename__ = "item_templates"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, nullable=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
     name = Column(String, nullable=False)           # internal/legacy name
     profile_type = Column(String, default="auction")  # 'auction' | 'fixed'
     item_name = Column(String, default="")            # product name e.g. "Dyson V8"
@@ -137,16 +176,5 @@ class ItemTemplate(Base):
     notes = Column(Text, default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    user = relationship("User", back_populates="item_templates")
 
-# ── Phase 3 — Billing & User Management ──────────────────────────────────────
-
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String, unique=True, nullable=False, index=True)
-    plan = Column(String, default="free")
-    stripe_customer_id = Column(String, nullable=True)
-    stripe_subscription_id = Column(String, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

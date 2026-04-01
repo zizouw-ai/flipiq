@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import AuctionHouseConfig
 from app.buy_cost import calculate_buy_cost, CANADA_TAX_RATES
+from app.middleware.limits import check_auction_house_limit, get_auction_house_count, raise_http_error_from_limit_error
 
 router = APIRouter(prefix="/api/auction-houses", tags=["auction_houses"])
 
@@ -29,6 +30,18 @@ def get_config(config_id: int, db: Session = Depends(get_db)):
 
 @router.post("/")
 def create_config(data: dict, db: Session = Depends(get_db)):
+    # Check auction house limit before creating
+    try:
+        user_id = data.get("user_id")
+        current_count = get_auction_house_count(user_id, db)
+        # TODO: Get actual user plan from auth
+        check_auction_house_limit("free", current_count)
+    except Exception as e:
+        if hasattr(e, "error_code"):
+            raise_http_error_from_limit_error(e)
+        else:
+            raise
+    
     cfg = AuctionHouseConfig(**data)
     db.add(cfg)
     db.commit()

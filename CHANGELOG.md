@@ -11,6 +11,10 @@
 - **BUG**: Pricing Calculator functionality reported not working on Railway.
 - **DIAGNOSIS**: 405 error is likely due to Railway's internal proxy/ingress blocking POST requests before they reach the FastAPI application. Backend API calls via `curl` directly succeed.
 
+## v0.5.2 — 2026-03-31
+- **FIX**: Resolution of Railway 405 Method Not Allowed deployment errors.
+- **FEAT**: Phase 3 SaaS features: JWT Authentication, Plan Tiers, and Stripe billing integration.
+
 ## v0.5.0 — 2026-03-29
 - Switched deployment target to Railway ($5/month Hobby plan)
 - Created railway.toml for backend service with SQLite volume support

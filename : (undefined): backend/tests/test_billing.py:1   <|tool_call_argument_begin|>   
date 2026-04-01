@@ -1,0 +1,145 @@
+:
+"""Test suite for Stripe billing integration."""
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+from unittest.mock import Mock, patch, MagicMock
+import json
+from datetime import datetime, timezone
+
+from app.main import app
+from app.database import get_db
+from app.models import User
+from app.plan_config import PlanType
+
+
+class TestBillingIntegration:
+    """Test Stripe billing integration endpoints."""
+
+    @pytest.fixture
+    def client(self):
+        """Create test client."""
+        return TestClient(app)
+
+    @pytest.fixture
+    def mock_db(self):
+        """Create mock database session."""
+        db = MagicMock()
+        # Mock user
+        mock_user = Mock(spec=User)
+        mock_user.id = 1
+        mock_user.email = "test@example.com"
+        mock_user.plan = "free"
+        mock_user.stripe_customer_id = None
+        mock_user.stripe_subscription_id = None
+        
+        db.query.return_value.filter.return_value.first.return_value = mock_user
+        return db
+
+    @pytest.fixture
+    def mock_stripe_customer(self):
+        """Create mock Stripe customer."""
+        return Mock(id="cus_test123")
+
+    @pytest.fixture
+    def mock_checkout_session(self):
+        """Create mock checkout session."""
+        return Mock(id="cs_test123", url="https://checkout.stripe.com/test")
+
+    @pytest.fixture
+    def mock_portal_session(self):
+        """Create mock portal session."""
+        return Mock(url="https://billing.stripe.com/portal/test")
+
+    @pytest.fixture
+    def mock_stripe_subscription(self):
+        """Create mock Stripe subscription."""
+        return Mock(
+            id="sub_test123",
+            status="active",
+            current_period_end=1234567890,
+            customer="cus_test123",
+            items=Mock(data=[
+                Mock(price=Mock(id="price_starter_test"))
+            ])
+        )
+
+    def test_create_checkout_session(self, client, mock_db, mock_checkout_session):
+        """Test successful checkout session creation."""
+        with patch('app.billing.stripe_service.create_checkout_session', return_value=mock_checkout_session):
+            with patch('app.billing.stripe_service.create_customer') as mock_create_customer:
+                with patch('app.routers.billing.get_db', return_value=mock_db):
+                    
+                    mock_create_customer.return_value = Mock(id="cus_test123")
+                    
+                    response = client.post("/api/billing/create-checkout", json={"plan": "starter"})
+                    
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert "session_id" in data
+                    assert "url" in data
+                    assert data["url"] == "https://checkout.stripe.com/test"
+
+    def test_invalid_plan_in_checkout(self, client):
+        """Test checkout with invalid plan type."""
+        response = client.post("/api/billing/create-checkout", json={"plan": "invalid_plan"})
+        
+        assert response.status_code == 400
+        assert "Invalid plan" in response.json()["detail"]
+
+    @pytest.fixture
+    def mock_user_with_customer(self):
+        """Create mock user with Stripe customer."""
+        user = Mock(spec=User)
+        user.id = 1
+        user.email = "test@example.com"
+        user.plan = "pro"
+        user.stripe_customer_id = "cus_test123"
+        user.stripe_subscription_id = "sub_test123"
+        return user
+
+    def test_portal_session_creation(self, client, mock_portal_session):
+        """Test successful portal session creation."""
+        with patch('app.billing.stripe_service.create_portal_session', return_value=mock_portal_session):
+            response = client.get("/api/billing/portal")
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert "url" in data
+            assert data["url"] == "https://billing.stripe.com/portal/test"
+
+    @pytest.mark.parametrize("event_type,description", [
+        ("invoice.payment_succeeded", "payment succeeded"),
+        ("customer.subscription.updated", "subscription updated"),
+        ("customer.subscription.deleted", "subscription deleted"),
+    ])
+    def test_webhook_handling_various_events(self, client, event_type, description):
+        """Test webhook handling for various Stripe events."""
+        event = {"type": event_type, "data": {"object": {}}}
+        
+        with patch('app.billing.stripe_service.handle_webhook') as mock_handle:
+            mock_handle.return_value = event
+            
+            headers = {"Stripe-Signature": "test_signature"}
+            response = client.post("/api/billing/webhook", data=json.dumps(event), headers=headers)
+            
+            assert response.status_code == 200
+            assert response.json()["status"] == "success"
+
+    def test_get_billing_status(self, client):
+        """Test retrieving billing status."""
+        response = client.get("/api/billing/status")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "plan" in data
+        assert "status" in data
+        assert data["status"]["plan"] == "free"
+
+    def test_missing_webhook_signature(self, client):
+        """Test webhook handler rejects missing signature."""
+        response = client.post("/api/billing/webhook", data="{}")
+        
+        assert response.status_code == 400
+        assert "Missing Stripe signature" in response.json()["detail"]

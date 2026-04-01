@@ -1,4 +1,4 @@
-"""Shared test database setup — all test files use the same override."""
+:"""Shared test database setup — all test files use the same override."""
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

@@ -68,9 +68,11 @@ See CHANGELOG.md for full history.
 - [ ] Pricing Calculator functionality on Railway (Reported not working)
 
 ### NOT STARTED
-- [ ] Phase 3: Multi-user auth (JWT), Stripe billing, landing page
 - [ ] Phase 4: eBay Sold Comps lookup, Bulk Price Calculator, Tax Report PDF
 - [ ] Phase 5: Team accounts, Auto-repricer, eBay listing creation API
+
+### IN PROGRESS
+- [ ] Phase 3: SaaS features (IN PROGRESS - see MILESTONE TRACKER for completed sub-items)
 
 ---
 
@@ -85,14 +87,13 @@ The AI working on the project MUST update this section at the end of every sessi
 - [ ] BUG-XXX | Short description | Affected: path/to/file.py | Discovered: YYYY-MM-DD | Notes: context
 
 ### Open Bugs
-- [ ] BUG-001 | Auction save API call getting 405 Method Not Allowed error on Railway | Affected: Backend service routing, Frontend API calls | Discovered: 2026-03-30 | Notes: Backend receives no logs, suggests Railway proxy blocking POST request. CORS set to allow all origins temporarily did not resolve.
 - [ ] BUG-002 | Pricing Calculator functionality not working on Railway | Affected: Calculator API calls | Discovered: 2026-03-30 | Notes: Assumed due to same underlying API call issues as auction save.
 
 ### Resolved Bugs
 
 | ID  | Description | Fixed Date | Commit |
 |-----|-------------|------------|--------|
-| —   | None yet    | —          | —      |
+| BUG-001 | Auction save API call getting 405 Method Not Allowed error on Railway | 2026-03-31 | nginx proxy configuration fix |
 
 ---
 
@@ -121,11 +122,11 @@ The AI must update this section when a milestone is finished.
 - [ ] 2.6 Custom domain (flipiq.ca) — awaiting deployment
 
 ### Phase 3 — SaaS Launch
-- [ ] 3.1 JWT auth (register / login / email verify / password reset)
-- [ ] 3.2 Plan tiers: Free / Starter $9 / Pro $19 / Team $49
-- [ ] 3.3 Stripe subscription billing + Customer Portal
-- [ ] 3.4 Usage limits per plan enforced server-side
-- [ ] 3.5 Admin dashboard (users, MRR, churn)
+- [x] 3.1 JWT auth (register / login / email verify / password reset)
+- [x] 3.2 Plan tiers: Free / Starter $9 / Pro $19 / Team $49
+- [x] 3.3 Stripe subscription billing + Customer Portal
+- [x] 3.4 Usage limits per plan enforced server-side
+- [x] 3.5 Admin dashboard (users, MRR, churn)
 - [ ] 3.6 Landing page with pricing table
 - [ ] 3.7 Migrate SQLite to PostgreSQL
 

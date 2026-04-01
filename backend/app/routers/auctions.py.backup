@@ -12,8 +12,6 @@ from app.schemas import (
 )
 from app.calculators import calculate_encore_cost, calculate_ebay_fees, calculate_net_profit
 from app.fees import calculate_fees
-from app.middleware.limits import check_item_limit, get_item_count, raise_http_error_from_limit_error
-
 
 router = APIRouter(prefix="/api/auctions", tags=["auctions"])
 
@@ -120,17 +118,6 @@ def list_items(auction_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{auction_id}/items", response_model=ItemResponse)
 def create_item(auction_id: int, req: ItemCreate, db: Session = Depends(get_db)):
-    # Check item limit before creating
-    try:
-        current_item_count = get_item_count(db)
-        # TODO: Get actual user plan from auth
-        check_item_limit("free", current_item_count)
-    except Exception as e:
-        if hasattr(e, "error_code"):
-            raise_http_error_from_limit_error(e)
-        else:
-            raise
-    
     auction = db.query(Auction).filter(Auction.id == auction_id).first()
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")

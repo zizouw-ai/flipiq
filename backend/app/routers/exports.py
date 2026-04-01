@@ -7,7 +7,8 @@ from app.database import get_db
 from app.models import Auction, Item
 from app.fees import calculate_fees
 from app.calculators import calculate_ebay_fees
-
+from app.middleware.limits import check_export_permission, raise_http_error_from_limit_error
+from app.routers.limits import get_current_user
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 
@@ -83,7 +84,17 @@ def _item_to_row(item):
 
 
 @router.get("/auction/{auction_id}")
-def export_auction(auction_id: int, db: Session = Depends(get_db)):
+def export_auction(auction_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # Check export permission before exporting
+    try:
+        
+        check_export_permission(current_user.plan)
+    except Exception as e:
+        if hasattr(e, "error_code"):
+            raise_http_error_from_limit_error(e)
+        else:
+            raise
+    
     auction = db.query(Auction).filter(Auction.id == auction_id).first()
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
@@ -103,7 +114,17 @@ def export_auction(auction_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/inventory")
-def export_inventory(start: str = None, end: str = None, channel: str = None, db: Session = Depends(get_db)):
+def export_inventory(start: str = None, end: str = None, channel: str = None, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # Check export permission before exporting
+    try:
+        
+        check_export_permission(current_user.plan)
+    except Exception as e:
+        if hasattr(e, "error_code"):
+            raise_http_error_from_limit_error(e)
+        else:
+            raise
+    
     query = db.query(Item).join(Auction)
     if start:
         query = query.filter(Auction.date >= start)
@@ -124,7 +145,17 @@ def export_inventory(start: str = None, end: str = None, channel: str = None, db
 
 
 @router.get("/dashboard/summary")
-def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db)):
+def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # Check export permission before exporting
+    try:
+        
+        check_export_permission(current_user.plan)
+    except Exception as e:
+        if hasattr(e, "error_code"):
+            raise_http_error_from_limit_error(e)
+        else:
+            raise
+    
     items = db.query(Item).join(Auction).filter(Auction.date.like(f"{year}%")).all()
     monthly = {}
     for item in items:
@@ -154,7 +185,17 @@ def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db)):
 
 
 @router.get("/tax-summary")
-def export_tax_summary(year: int = 2026, db: Session = Depends(get_db)):
+def export_tax_summary(year: int = 2026, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # Check export permission before exporting
+    try:
+        
+        check_export_permission(current_user.plan)
+    except Exception as e:
+        if hasattr(e, "error_code"):
+            raise_http_error_from_limit_error(e)
+        else:
+            raise
+    
     items = db.query(Item).join(Auction).filter(Auction.date.like(f"{year}%"), Item.status == "sold").all()
     channels = {}
     for item in items:

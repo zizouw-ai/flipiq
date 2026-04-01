@@ -1,4 +1,4 @@
-import logging
+: import logging
 
 # Configure basic logging to stdout
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(name)s:%(lineno)d: %(message)s')
@@ -6,13 +6,17 @@ logger = logging.getLogger(__name__)
 
 """FastAPI main application entry point for FlipIQ."""
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import init_db
-from app.routers import calculator, auctions, dashboard, settings, limits
-from app.routers import auction_houses, shipping_presets, templates, exports
-from app.routers import items as items_router
+from fastapi.security import HTTPBearer
+from sqlalchemy.orm import Session
+from app.database import init_db, get_db
+from app.routers import calculator, auctions, dashboard, settings
+from app.routers import auction_houses, shipping_presets, templates, exports, items as items_router
+from app.routers import auth
 from app.currency import router as currency_router
+from app.models import User
+import os
 
 
 @asynccontextmanager
@@ -65,11 +69,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+security = HTTPBearer()
+
+# Middleware to attach user to request
+@app.middleware("http")
+async def attach_user_to_request(request: Request, call_next, db: Session = Depends(get_db)):
+    # Extract authorization token
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "")
+        from app.auth.jwt import verify_token
+        token_data = verify_token(token)
+        if token_data and token_data.get("type") == "access":
+            user = db.query(User).filter(User.id == token_data["user_id"]).first()
+            request.state.user = user
+    
+    response = await call_next(request)
+    return response
+
+Public endpoints that don't require authentication
+PUBLIC_PATHS = ["/", "/health", "/auth/register", "/auth/login", "/auth/refresh", "/auth/forgot-password", "/auth/reset-password", "/auth/verify-email"]
+
 @app.get("/test-log")
 def test_log():
     logger.info("Test log endpoint hit!")
     return {"status": "Log message sent"}
 
+app.include_router(auth.router)
 app.include_router(calculator.router)
 app.include_router(auctions.router)
 app.include_router(dashboard.router)
@@ -80,8 +106,6 @@ app.include_router(templates.router)
 app.include_router(exports.router)
 app.include_router(currency_router)
 app.include_router(items_router.router)
-app.include_router(limits.router)
-
 
 @app.get("/")
 def root():

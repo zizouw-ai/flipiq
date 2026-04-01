@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import ItemTemplate
+from app.middleware.limits import check_template_permission, raise_http_error_from_limit_error
+from app.routers.limits import get_current_user
 
 router = APIRouter(prefix="/api/templates", tags=["profiles"])
 
@@ -13,7 +15,17 @@ def list_profiles(db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def create_profile(data: dict, db: Session = Depends(get_db)):
+def create_profile(data: dict, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # Check template permission before creating
+    try:
+        
+        check_template_permission(current_user.plan)
+    except Exception as e:
+        if hasattr(e, "error_code"):
+            raise_http_error_from_limit_error(e)
+        else:
+            raise
+    
     # item_name is required
     item_name = (data.get("item_name") or "").strip()
     if not item_name:

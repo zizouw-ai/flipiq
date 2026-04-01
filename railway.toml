@@ -26,4 +26,4 @@ restartPolicyType = "on_failure"
 NODE_ENV = "production"
 
 [service.flipiq-frontend.build.variables]
-VITE_API_URL = "https://flipiq-backend-production-7d65.up.railway.app"
+VITE_API_URL = "${RAILWAY_SERVICE_FLIQBACKEND_URL}"

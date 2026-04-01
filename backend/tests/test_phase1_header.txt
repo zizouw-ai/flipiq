@@ -1,0 +1,10 @@
+"""Phase 1 tests — Auction House Configs, Province Tax, Break-Even Alerts, Export, Currency, Goal Tracker."""
+import pytest
+from io import BytesIO
+
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+# ── Feature 1.1 — Auction House Configs ─────────────────────────────────────

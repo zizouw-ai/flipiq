@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -29,7 +29,7 @@ from app.auth.schemas import (
     MessageResponse,
 )
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -76,20 +76,20 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    credentials: UserLogin,
     db: Session = Depends(get_db)
 ):
     """
     Login with email and password.
 
     Authenticates a user and returns access and refresh tokens.
-    Use form data with username (email) and password fields.
+    Use JSON with email and password fields.
     """
     # Find user by email
-    user = db.query(User).filter(User.email == form_data.username).first()
+    user = db.query(User).filter(User.email == credentials.email).first()
 
     # Verify credentials
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",

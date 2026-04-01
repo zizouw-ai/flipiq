@@ -24,7 +24,8 @@ export const useAuthStore = create(
           })
           if (!res.ok) {
             const err = await res.json().catch(() => ({}))
-            throw new Error(err.detail || 'Login failed')
+            const message = err.detail || err.message || err.error || (typeof err === 'object' && Object.keys(err).length > 0 ? JSON.stringify(err) : 'Login failed')
+            throw new Error(message)
           }
           const data = await res.json()
           set({
@@ -36,7 +37,8 @@ export const useAuthStore = create(
           })
           return true
         } catch (err) {
-          set({ isLoading: false, error: err.message })
+          const errorMessage = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err))
+          set({ isLoading: false, error: errorMessage })
           return false
         }
       },
@@ -51,12 +53,14 @@ export const useAuthStore = create(
           })
           if (!res.ok) {
             const err = await res.json().catch(() => ({}))
-            throw new Error(err.detail || 'Registration failed')
+            const message = err.detail || err.message || err.error || (typeof err === 'object' && Object.keys(err).length > 0 ? JSON.stringify(err) : 'Registration failed')
+            throw new Error(message)
           }
           set({ isLoading: false })
           return true
         } catch (err) {
-          set({ isLoading: false, error: err.message })
+          const errorMessage = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err))
+          set({ isLoading: false, error: errorMessage })
           return false
         }
       },

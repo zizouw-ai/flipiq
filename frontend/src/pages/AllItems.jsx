@@ -43,6 +43,12 @@ export default function AllItems() {
 
   // Selected item detail
   const [selectedItem, setSelectedItem] = useState(null);
+  const [planInfo, setPlanInfo] = useState(null);
+  const [exportError, setExportError] = useState('');
+
+  useEffect(() => {
+    api.getPlan().then(setPlanInfo).catch(() => {});
+  }, []);
 
   const loadAuctions = useCallback(() => {
     api.listAuctions().then(setAuctions).catch(() => {});
@@ -123,45 +129,25 @@ export default function AllItems() {
     setPagination(p => ({ ...p, page: 1 }));
   };
 
-  const exportToCSV = (allItems = false) => {
-    const rows = allItems ? [] : items; // Would need separate API call for all
-    const headers = [
-      'Item Name', 'Category', 'Lot Number', 'Auction Name', 'Auction Date',
-      'Purchase Price', 'Hammer Price', 'Estimated Resale', 'Sold Price',
-      'Status', 'Profit', 'ROI %', 'Platform Sold On', 'Sale Channel',
-      'List Price', 'Sell Date', 'Notes'
-    ];
-
-    const csv = [
-      headers.join(','),
-      ...items.map(item => [
-        `"${(item.name || '').replace(/"/g, '""')}"`,
-        item.category,
-        item.lot_number || '',
-        item.auction_name,
-        item.auction_date,
-        item.purchase_price,
-        item.hammer_price,
-        item.estimated_resale || '',
-        item.sold_price || '',
-        item.status,
-        item.net_profit != null ? item.net_profit : '',
-        item.roi_pct != null ? `${item.roi_pct.toFixed(1)}%` : '',
-        item.platform_sold_on || '',
-        item.sale_channel,
-        item.list_price || '',
-        item.sell_date || '',
-        `"${(item.notes || '').replace(/"/g, '""')}"`,
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `flipiq_all_items_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportToCSV = async (allItems = false) => {
+    setExportError('');
+    try {
+      // Check if user has pro plan
+      const planRes = await api.getPlan().catch(() => ({ plan: 'free' }));
+      if (planRes.plan === 'free') {
+        setExportError('Export feature is not available on your free plan.');
+        return;
+      }
+      // Use API export which enforces plan limits
+      const params = { start: dateFrom, end: dateTo, channel: channelFilter !== 'all' ? channelFilter : null };
+      await api.exportInventory(params);
+    } catch (err) {
+      if (err.message?.includes('402') || err.message?.includes('feature_blocked')) {
+        setExportError('Export feature is not available on your free plan.');
+      } else {
+        console.error('Export failed:', err);
+      }
+    }
   };
 
   const activeFilterCount = useMemo(() => {
@@ -192,6 +178,22 @@ export default function AllItems() {
           </button>
         </div>
       </div>
+
+      {/* Export Error Banner */}
+      {exportError && (
+        <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <p className="text-amber-400 font-medium">{exportError}</p>
+              <p className="text-amber-400/70 text-sm">Upgrade to Pro to unlock exports</p>
+            </div>
+          </div>
+          <a href="/pricing" className="px-4 py-2 bg-amber-500 text-surface-900 rounded-lg font-medium hover:bg-amber-400 transition-colors text-sm">
+            Upgrade Now →
+          </a>
+        </div>
+      )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

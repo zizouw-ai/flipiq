@@ -159,11 +159,29 @@ def get_optional_user(
         return None
 
 
-def require_auth(user: Optional[User] = Depends(get_current_user)) -> User:
+def require_auth(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> User:
     """
     Dependency that requires authentication.
     Raises 401 if user is not authenticated.
+    Supports dev mode with a mock user.
     """
+    # Check for dev mode token
+    if token == "dev-token":
+        # Return a mock user for dev mode with unlimited access
+        return User(
+            id=1,
+            email="dev@local",
+            name="Developer",
+            plan="pro",
+            is_active=1,
+            is_verified=1,
+        )
+
+    # Normal auth flow
+    user = get_current_user(token, db)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

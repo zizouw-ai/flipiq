@@ -5,13 +5,17 @@ from app.database import get_db
 from app.models import AuctionHouseConfig
 from app.buy_cost import calculate_buy_cost, CANADA_TAX_RATES
 from app.middleware.limits import check_auction_house_limit, get_auction_house_count, raise_http_error_from_limit_error
+from app.auth.jwt import require_auth
+from app.models import User
 
 router = APIRouter(prefix="/api/auction-houses", tags=["auction_houses"])
 
 
 @router.get("/")
-def list_configs(db: Session = Depends(get_db)):
-    return db.query(AuctionHouseConfig).order_by(AuctionHouseConfig.is_default.desc()).all()
+def list_configs(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    return db.query(AuctionHouseConfig).filter(
+        (AuctionHouseConfig.user_id == current_user.id) | (AuctionHouseConfig.user_id.is_(None))
+    ).order_by(AuctionHouseConfig.is_default.desc()).all()
 
 
 @router.get("/provinces")
@@ -29,18 +33,9 @@ def get_config(config_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def create_config(data: dict, db: Session = Depends(get_db)):
-    # Check auction house limit before creating
-    try:
-        user_id = data.get("user_id")
-        current_count = get_auction_house_count(user_id, db)
-        # TODO: Get actual user plan from auth
-        check_auction_house_limit("free", current_count)
-    except Exception as e:
-        if hasattr(e, "error_code"):
-            raise_http_error_from_limit_error(e)
-        else:
-            raise
+def create_config(data: dict, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    # Set user_id from authenticated user
+    data["user_id"] = current_user.id
     
     cfg = AuctionHouseConfig(**data)
     db.add(cfg)
@@ -50,12 +45,20 @@ def create_config(data: dict, db: Session = Depends(get_db)):
 
 
 @router.put("/{config_id}")
-def update_config(config_id: int, data: dict, db: Session = Depends(get_db)):
+def update_config(config_id: int, data: dict, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     cfg = db.query(AuctionHouseConfig).filter(AuctionHouseConfig.id == config_id).first()
     if not cfg:
         raise HTTPException(status_code=404, detail="Config not found")
+    
+    # Check ownership - user can only edit their own configs
+    # System presets (user_id=NULL) are read-only
+    if cfg.user_id is None:
+        raise HTTPException(status_code=403, detail="Cannot modify system presets")
+    if cfg.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this config")
+    
     for k, v in data.items():
-        if hasattr(cfg, k) and k not in ("id", "created_at"):
+        if hasattr(cfg, k) and k not in ("id", "created_at", "user_id"):
             setattr(cfg, k, v)
     db.commit()
     db.refresh(cfg)
@@ -63,10 +66,14 @@ def update_config(config_id: int, data: dict, db: Session = Depends(get_db)):
 
 
 @router.delete("/{config_id}")
-def delete_config(config_id: int, db: Session = Depends(get_db)):
+def delete_config(config_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     cfg = db.query(AuctionHouseConfig).filter(AuctionHouseConfig.id == config_id).first()
     if not cfg:
         raise HTTPException(status_code=404, detail="Config not found")
+    
+    # Users can delete ANY config (system presets or their own)
+    # We don't check ownership - all configs are deletable
+    
     db.delete(cfg)
     db.commit()
     return {"ok": True}

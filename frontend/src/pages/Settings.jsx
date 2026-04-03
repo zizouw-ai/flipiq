@@ -4,7 +4,7 @@ import { api, CHANNELS, CHANNEL_MAP } from '../api';
 const STORE_TIERS = ['none', 'basic', 'premium', 'anchor'];
 const TABS = [
   { id: 'general', label: '⚙️ General', icon: '⚙️' },
-  { id: 'auction-houses', label: '🏛️ Auction Houses', icon: '🏛️' },
+  { id: 'auction-houses', label: '🏛️ Buy Cost Sources', icon: '🏛️' },
   { id: 'shipping', label: '📦 Shipping', icon: '📦' },
   { id: 'templates', label: '📋 Profiles', icon: '📋' },
 ];
@@ -21,6 +21,24 @@ export default function Settings() {
   const [newPreset, setNewPreset] = useState({ name: '', carrier: '', cost_cad: 0 });
   const [editingProfile, setEditingProfile] = useState(null);
   const [showProfileForm, setShowProfileForm] = useState(false);
+  const [showHouseForm, setShowHouseForm] = useState(false);
+  const [editingHouseId, setEditingHouseId] = useState(null);
+  const emptyHouseForm = {
+    name: '',
+    buyer_premium_pct: 0,
+    handling_fee_flat: 0,
+    handling_fee_pct: 0,
+    handling_fee_mode: 'none',
+    tax_pct: 13.0,
+    tax_applies_to: 'subtotal',
+    credit_card_surcharge_pct: 0,
+    online_bidding_fee_pct: 0,
+    payment_methods: 'etransfer,credit_card,cash',
+    lot_handling: 'per_item',
+    currency: 'CAD',
+    notes: ''
+  };
+  const [houseForm, setHouseForm] = useState(emptyHouseForm);
   const EBAY_CATEGORIES = ['Most Categories (Default)', 'Books & Media', 'Clothing & Shoes', 'Collectibles', 'Electronics', 'Home & Garden', 'Musical Instruments', 'Sporting Goods', 'Toys & Hobbies', 'Video Games'];
   const emptyProfile = {
     profile_type: 'auction', item_name: '', category: '', sale_channel: 'ebay',
@@ -53,6 +71,45 @@ export default function Settings() {
     await api.updateSettingsBulk(bulk);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const canAddAuctionHouse = () => {
+    // For now, always allow in dev mode. Later check plan limits
+    const customCount = auctionHouses.filter(h => h.user_id !== null).length;
+    return customCount < 1; // Free plan: 1 custom config
+  };
+
+  const handleSaveAuctionHouse = async () => {
+    if (!houseForm.name.trim()) {
+      alert('Name is required');
+      return;
+    }
+    const data = { ...houseForm };
+    try {
+      if (editingHouseId) {
+        await api.updateAuctionHouse(editingHouseId, data);
+      } else {
+        await api.createAuctionHouse(data);
+      }
+      setShowHouseForm(false);
+      setEditingHouseId(null);
+      setHouseForm(emptyHouseForm);
+      const houses = await api.listAuctionHouses();
+      setAuctionHouses(houses);
+    } catch (err) {
+      alert(`Error: ${err.message || 'Failed to save'}`);
+    }
+  };
+
+  const handleDuplicateAuctionHouse = (house) => {
+    const dup = { ...house };
+    dup.name = `${dup.name} (Copy)`;
+    delete dup.id;
+    delete dup.created_at;
+    delete dup.is_default;
+    setHouseForm(dup);
+    setEditingHouseId(null);
+    setShowHouseForm(true);
   };
 
   return (
@@ -182,18 +239,35 @@ export default function Settings() {
 
       {/* ── AUCTION HOUSES TAB ── */}
       {tab === 'auction-houses' && (
-        <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-surface-200 mb-4">🏛️ Auction House Configurations</h2>
-          <p className="text-xs text-surface-500 mb-4">Manage preset and custom auction house fee structures</p>
-          <div className="space-y-3">
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-surface-200">🏛️ Buy Cost Sources</h2>
+          <button
+            onClick={() => {
+              setEditingHouseId(null);
+              setHouseForm(emptyHouseForm);
+              setShowHouseForm(true);
+            }}
+            className="btn-primary text-sm"
+          >
+            + New Buy Cost Source
+          </button>
+        </div>
+        <p className="text-xs text-surface-500 mb-6">Select where you buy inventory. Each source has different fee structures.</p>
+
+        <div className="space-y-4">
             {auctionHouses.map(h => (
               <div key={h.id} className={`p-4 rounded-xl border transition-all ${
                 h.is_default ? 'border-brand-500/40 bg-brand-600/10' : 'border-surface-700/30 bg-surface-800/30'
               }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-surface-200">{h.name}</span>
-                    {h.is_default ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-600/30 text-brand-400 border border-brand-500/30">DEFAULT</span> : null}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium text-surface-200">{h.name.replace(/\s*\d+%$/, '')}</span>
+              {h.is_default && <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-600/30 text-brand-400 border border-brand-500/30">DEFAULT</span>}
+              {h.user_id !== null && <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-500/30 text-accent-400 border border-accent-500/30">CUSTOM</span>}
+            </div>
+                    {h.notes && <p className="text-xs text-surface-500 mb-2">{h.notes}</p>}
                   </div>
                   <div className="flex gap-2">
                     {!h.is_default && (
@@ -206,25 +280,314 @@ export default function Settings() {
                       className="text-xs text-surface-400 hover:text-surface-200">{editingHouse === h.id ? 'Close' : 'Details'}</button>
                   </div>
                 </div>
-                <div className="flex gap-4 text-xs text-surface-400">
-                  <span>Premium: {h.buyer_premium_pct}%</span>
-                  <span>Handling: {h.handling_fee_mode === 'flat' ? `$${h.handling_fee_flat}` : h.handling_fee_mode === 'pct' ? `${h.handling_fee_pct}%` : 'None'}</span>
-                  <span>Tax: {h.tax_pct}%</span>
-                  <span>CC: {h.credit_card_surcharge_pct}%</span>
-                </div>
+                
+  {/* Fee Summary - Compact View - Only show non-zero values */}
+  <div className="flex flex-wrap gap-4 text-xs">
+    {h.buyer_premium_pct > 0 && (
+      <span className="text-surface-400">
+        <span className="text-surface-500">Premium:</span>
+        <span className="text-brand-400"> {h.buyer_premium_pct}%</span>
+      </span>
+    )}
+    {(h.handling_fee_flat > 0 || h.handling_fee_pct > 0) && (
+      <span className="text-surface-400">
+        <span className="text-surface-500">Handling:</span>
+        <span className="text-brand-400">
+          {' '}{h.handling_fee_mode === 'flat' && h.handling_fee_flat > 0 ? `$${h.handling_fee_flat}` : h.handling_fee_mode === 'pct' && h.handling_fee_pct > 0 ? `${h.handling_fee_pct}%` : ''}
+        </span>
+      </span>
+    )}
+    <span className="text-surface-400">
+      <span className="text-surface-500">Tax:</span>
+      <span className={h.tax_pct > 0 ? 'text-brand-400' : 'text-surface-300'}> {h.tax_pct}%</span>
+    </span>
+    {h.credit_card_surcharge_pct > 0 && (
+      <span className="text-surface-400">
+        <span className="text-surface-500">CC Fee:</span>
+        <span className="text-brand-400"> {h.credit_card_surcharge_pct}%</span>
+      </span>
+    )}
+  </div>
+                
+                {/* Expanded Details */}
                 {editingHouse === h.id && (
-                  <div className="mt-3 pt-3 border-t border-surface-700/30 grid grid-cols-2 gap-3 text-xs">
-                    <div><span className="text-surface-500">Tax Applies To:</span> <span className="text-surface-300 ml-1">{h.tax_applies_to}</span></div>
-                    <div><span className="text-surface-500">Online Fee:</span> <span className="text-surface-300 ml-1">{h.online_bidding_fee_pct}%</span></div>
-                    <div><span className="text-surface-500">Payment:</span> <span className="text-surface-300 ml-1">{h.payment_methods}</span></div>
-                    <div><span className="text-surface-500">Currency:</span> <span className="text-surface-300 ml-1">{h.currency}</span></div>
+                  <div className="mt-4 pt-4 border-t border-surface-700/30">
+                    {/* Warning for preset configs */}
+                    {!h.name.includes('Custom') && (
+                      <div className="mb-4 p-3 rounded-lg bg-surface-700/30 border border-surface-600/30">
+                        <p className="text-xs text-surface-400">
+                          <span className="text-brand-400">ℹ️</span> This is a preset configuration. 
+                          {h.name.includes('Encore') 
+                            ? 'Encore Auctions fees are set by the auction house and cannot be changed.'
+                            : 'These are typical fees for this source type.'}
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                      <div className="p-2 rounded-lg bg-surface-800/50">
+                        <span className="text-surface-500 block mb-1">Buyer's Premium</span>
+                        <span className="text-surface-200 font-medium">{h.buyer_premium_pct}%</span>
+                        <p className="text-[10px] text-surface-500 mt-1">Added to hammer price</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-surface-800/50">
+                        <span className="text-surface-500 block mb-1">Handling Fee</span>
+                        <span className="text-surface-200 font-medium">
+                          {h.handling_fee_mode === 'flat' && h.handling_fee_flat > 0 ? `$${h.handling_fee_flat} flat` : 
+                           h.handling_fee_mode === 'pct' ? `${h.handling_fee_pct}%` : 
+                           'None'}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-surface-800/50">
+                        <span className="text-surface-500 block mb-1">Tax Rate</span>
+                        <span className="text-surface-200 font-medium">{h.tax_pct}%</span>
+                        <p className="text-[10px] text-surface-500 mt-1">Applied to: {h.tax_applies_to}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-surface-800/50">
+                        <span className="text-surface-500 block mb-1">Credit Card Fee</span>
+                        <span className="text-surface-200 font-medium">{h.credit_card_surcharge_pct}%</span>
+                        <p className="text-[10px] text-surface-500 mt-1">If paying by CC</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-surface-800/50">
+                        <span className="text-surface-500 block mb-1">Payment Methods</span>
+                        <span className="text-surface-200 font-medium">{h.payment_methods?.replace(/,/g, ', ') || 'Cash'}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-surface-800/50">
+                        <span className="text-surface-500 block mb-1">Currency</span>
+                        <span className="text-surface-200 font-medium">{h.currency}</span>
+                      </div>
+                    </div>
+                    
+            {/* Action Buttons */}
+            <div className="mt-4 flex gap-2">
+              {h.user_id !== null && (
+                <>
+                  <button
+                    onClick={() => {
+                      setEditingHouseId(h.id);
+                      setHouseForm({ ...h });
+                      setShowHouseForm(true);
+                    }}
+                    className="btn-secondary text-xs"
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    onClick={() => handleDuplicateAuctionHouse(h)}
+                    className="text-xs text-accent-400 hover:text-accent-300"
+                  >
+                    📝 Duplicate
+                  </button>
+                </>
+              )}
+              
+              {/* Delete available for ALL configs with confirmation */}
+              <button
+                onClick={async () => {
+                  const isSystemPreset = h.user_id === null;
+                  const message = isSystemPreset 
+                    ? `Delete "${h.name}"?\n\n⚠️ This is a system preset. You can recreate it later, but it will be removed permanently.` 
+                    : `Delete "${h.name}"?\n\nThis cannot be undone.`;
+                  if (!confirm(message)) return;
+                  await api.deleteAuctionHouse(h.id);
+                  const houses = await api.listAuctionHouses();
+                  setAuctionHouses(houses);
+                }}
+                className="text-xs text-red-400 hover:text-red-300"
+              >
+                🗑️ Delete
+              </button>
+              
+              {!h.is_default && (
+                <button onClick={async () => {
+                  await api.setDefaultAuctionHouse(h.id);
+                  api.listAuctionHouses().then(setAuctionHouses);
+                }} className="text-xs text-surface-400 hover:text-brand-400">
+                  Set Default
+                </button>
+              )}
+            </div>
                   </div>
                 )}
               </div>
             ))}
-          </div>
         </div>
-      )}
+
+        {/* Create / Edit Form */}
+        {showHouseForm && (
+          <div className="p-5 rounded-xl border border-surface-600/30 bg-surface-800/20 animate-fade-in mt-6">
+            <h3 className="text-sm font-semibold text-surface-200 mb-4">
+              {editingHouseId ? 'Edit Buy Cost Source' : 'New Buy Cost Source'}
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Name *</label>
+                <input
+                  className="input-field"
+                  value={houseForm.name}
+                  onChange={e => setHouseForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. My Local Auction House"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Currency</label>
+                <select
+                  className="input-field"
+                  value={houseForm.currency}
+                  onChange={e => setHouseForm(f => ({ ...f, currency: e.target.value }))}
+                >
+                  <option value="CAD">CAD 🇨🇦</option>
+                  <option value="USD">USD 🇺🇸</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Buyer's Premium %</label>
+                <input
+                  type="number"
+                  className="input-field"
+                  step="0.1"
+                  value={houseForm.buyer_premium_pct}
+                  onChange={e => setHouseForm(f => ({ ...f, buyer_premium_pct: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Credit Card Fee %</label>
+                <input
+                  type="number"
+                  className="input-field"
+                  step="0.1"
+                  value={houseForm.credit_card_surcharge_pct}
+                  onChange={e => setHouseForm(f => ({ ...f, credit_card_surcharge_pct: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Online Bidding Fee %</label>
+                <input
+                  type="number"
+                  className="input-field"
+                  step="0.1"
+                  value={houseForm.online_bidding_fee_pct}
+                  onChange={e => setHouseForm(f => ({ ...f, online_bidding_fee_pct: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Tax Rate %</label>
+                <input
+                  type="number"
+                  className="input-field"
+                  step="0.1"
+                  value={houseForm.tax_pct}
+                  onChange={e => setHouseForm(f => ({ ...f, tax_pct: parseFloat(e.target.value) || 13.0 }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Handling Fee Mode</label>
+                <select
+                  className="input-field"
+                  value={houseForm.handling_fee_mode}
+                  onChange={e => setHouseForm(f => ({ ...f, handling_fee_mode: e.target.value }))}
+                >
+                  <option value="none">None</option>
+                  <option value="flat">Flat Rate</option>
+                  <option value="pct">Percentage</option>
+                </select>
+              </div>
+              {houseForm.handling_fee_mode !== 'none' && (
+                <div>
+                  <label className="text-xs text-surface-400 mb-1 block">
+                    {houseForm.handling_fee_mode === 'flat' ? 'Handling Fee $' : 'Handling Fee %'}
+                  </label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    step="0.01"
+                    value={houseForm.handling_fee_mode === 'flat' ? houseForm.handling_fee_flat : houseForm.handling_fee_pct}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setHouseForm(f => ({
+                        ...f,
+                        handling_fee_flat: houseForm.handling_fee_mode === 'flat' ? val : f.handling_fee_flat,
+                        handling_fee_pct: houseForm.handling_fee_mode === 'pct' ? val : f.handling_fee_pct
+                      }));
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Tax Applies To</label>
+                <select
+                  className="input-field"
+                  value={houseForm.tax_applies_to}
+                  onChange={e => setHouseForm(f => ({ ...f, tax_applies_to: e.target.value }))}
+                >
+                  <option value="subtotal">Subtotal + Premium</option>
+                  <option value="hammer_only">Hammer Only</option>
+                  <option value="all">All Fees</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-surface-400 mb-1 block">Payment Methods</label>
+                <input
+                  className="input-field"
+                  value={houseForm.payment_methods}
+                  onChange={e => setHouseForm(f => ({ ...f, payment_methods: e.target.value }))}
+                  placeholder="etransfer,credit_card,cash"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-surface-400 mb-1 block">Notes (optional)</label>
+              <textarea
+                className="input-field"
+                rows="3"
+                value={houseForm.notes}
+                onChange={e => setHouseForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Description or additional details..."
+              />
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleSaveAuctionHouse}
+                className="btn-primary"
+              >
+                {editingHouseId ? 'Update' : 'Create'} Buy Cost Source
+              </button>
+              <button
+                onClick={() => {
+                  setShowHouseForm(false);
+                  setEditingHouseId(null);
+                  setHouseForm(emptyHouseForm);
+                }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Help Text */}
+        <div className="mt-6 p-4 rounded-lg bg-surface-800/30 border border-surface-700/30">
+          <p className="text-xs text-surface-400">
+            <span className="text-brand-400">💡 Tip:</span> Select the source that matches where you buy inventory.
+            The default will be pre-selected when creating new auctions.
+            <span className="text-accent-400">Custom Buy Cost</span> allows you to set your own fees for unique situations.
+          </p>
+        </div>
+      </div>
+    )}
 
       {/* ── SHIPPING TAB ── */}
       {tab === 'shipping' && (

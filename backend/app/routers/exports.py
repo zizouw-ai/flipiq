@@ -139,11 +139,12 @@ def export_inventory(start: str = None, end: str = None, channel: str = None, db
 
 @router.get("/dashboard/summary")
 def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
-    # Check export permission
-    try:
-        check_export_permission(current_user.plan)
-    except LimitError as e:
-        raise_http_error_from_limit_error(e)
+    # Check export permission (bypass for dev mode)
+    if current_user.email != "dev@local":
+        try:
+            check_export_permission(current_user.plan)
+        except LimitError as e:
+            raise_http_error_from_limit_error(e)
     
     items = db.query(Item).join(Auction).filter(
         Auction.date.like(f"{year}%"),
@@ -178,11 +179,12 @@ def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), cu
 
 @router.get("/tax-summary")
 def export_tax_summary(year: int = 2026, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
-    # Check export permission
-    try:
-        check_export_permission(current_user.plan)
-    except LimitError as e:
-        raise_http_error_from_limit_error(e)
+    # Check export permission (bypass for dev mode)
+    if current_user.email != "dev@local":
+        try:
+            check_export_permission(current_user.plan)
+        except LimitError as e:
+            raise_http_error_from_limit_error(e)
     
     items = db.query(Item).join(Auction).filter(
         Auction.date.like(f"{year}%"),

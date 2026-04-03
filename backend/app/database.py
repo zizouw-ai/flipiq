@@ -2,11 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./flipiq.db")
-
-# Railway volume mount path - use /data for persistent storage if available
-if os.path.exists("/data") and DATABASE_URL.startswith("sqlite:///./"):
-    DATABASE_URL = "sqlite:///data/flipiq.db"
+# Use absolute path to fix database switching issue
+# Always use the single database file at project root
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////Users/ramzi/Documents/filpIQ antigravity openrouter/flipiq.db")
 
 # SQLite requires check_same_thread=False for FastAPI multi-threading
 # Only apply if DATABASE_URL starts with "sqlite"

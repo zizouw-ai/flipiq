@@ -88,7 +88,7 @@ export const useAuthStore = create(
 
       getAuthHeaders: () => {
         const { token, devMode } = get()
-        if (devMode) return { 'Content-Type': 'application/json' }
+        if (devMode) return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
         return token
           ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
           : { 'Content-Type': 'application/json' }

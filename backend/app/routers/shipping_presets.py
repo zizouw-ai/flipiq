@@ -3,13 +3,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import ShippingPreset
+from app.auth.jwt import require_auth
+from app.models import User
 
 router = APIRouter(prefix="/api/shipping-presets", tags=["shipping_presets"])
 
 
 @router.get("/")
-def list_presets(db: Session = Depends(get_db)):
-    return db.query(ShippingPreset).order_by(ShippingPreset.is_default.desc()).all()
+def list_presets(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    return db.query(ShippingPreset).filter(
+        (ShippingPreset.user_id == current_user.id) | (ShippingPreset.user_id.is_(None))
+    ).order_by(ShippingPreset.is_default.desc()).all()
 
 
 @router.post("/")

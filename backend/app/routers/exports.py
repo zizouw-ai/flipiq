@@ -158,10 +158,10 @@ def export_dashboard_summary(year: int = 2026, db: Session = Depends(get_db), cu
         month = auction.date[:7]
         if month not in monthly:
             monthly[month] = {"month": month, "revenue": 0, "cogs": 0, "fees": 0, "profit": 0}
-        monthly[month]["cogs"] += item.buy_cost_total
+        monthly[month]["cogs"] += (item.buy_cost_total or 0)
         if item.status == "sold" and item.sold_price:
-            monthly[month]["revenue"] += item.sold_price
-            monthly[month]["fees"] += _get_item_fees(item)
+            monthly[month]["revenue"] += (item.sold_price or 0)
+            monthly[month]["fees"] += (_get_item_fees(item) or 0)
             monthly[month]["profit"] += (item.net_profit or 0)
 
     headers = ["Month", "Revenue", "COGS", "Platform Fees", "Net Profit"]
@@ -197,8 +197,8 @@ def export_tax_summary(year: int = 2026, db: Session = Depends(get_db), current_
         if ch not in channels:
             channels[ch] = {"channel": ch, "revenue": 0, "cogs": 0, "fees": 0, "profit": 0}
         channels[ch]["revenue"] += (item.sold_price or 0)
-        channels[ch]["cogs"] += item.buy_cost_total
-        channels[ch]["fees"] += _get_item_fees(item)
+        channels[ch]["cogs"] += (item.buy_cost_total or 0)
+        channels[ch]["fees"] += (_get_item_fees(item) or 0)
         channels[ch]["profit"] += (item.net_profit or 0)
 
     headers = ["Channel", "Total Revenue", "Total COGS", "Total Fees", "Net Profit"]

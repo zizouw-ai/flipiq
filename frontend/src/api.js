@@ -31,7 +31,10 @@ async function downloadFile(url) {
   const authHeaders = useAuthStore.getState().getAuthHeaders()
   const isDevMode = useAuthStore.getState().devMode
   const res = await fetch(`${API}${url}`, {
-    headers: authHeaders,
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+    },
   });
   if (res.status === 401 && !isDevMode) {
     useAuthStore.getState().logout()

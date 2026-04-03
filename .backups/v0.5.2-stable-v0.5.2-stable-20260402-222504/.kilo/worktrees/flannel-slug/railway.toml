@@ -1,0 +1,29 @@
+# Railway mono-repo service configuration
+
+[service.flipiq-backend]
+rootDirectory = "."
+dockerfilePath = "Dockerfile.backend"
+
+[service.flipiq-backend.deploy]
+startCommand = "./start.sh"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+[service.flipiq-backend.mounts.data]
+mountPath = "/data"
+
+[service.flipiq-backend.variables]
+PYTHONUNBUFFERED = "1"
+
+[service.flipiq-frontend]
+rootDirectory = "frontend"
+dockerfilePath = "Dockerfile.frontend"
+
+[service.flipiq-frontend.deploy]
+restartPolicyType = "on_failure"
+
+[service.flipiq-frontend.variables]
+NODE_ENV = "production"
+
+[service.flipiq-frontend.build.variables]
+VITE_API_URL = "${RAILWAY_SERVICE_FLIQBACKEND_URL}"

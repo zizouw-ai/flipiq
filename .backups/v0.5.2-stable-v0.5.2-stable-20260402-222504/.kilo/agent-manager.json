@@ -1,0 +1,21 @@
+{
+  "worktrees": {
+    "wt-1775126293484-1": {
+      "branch": "flannel-slug",
+      "path": "/Users/ramzi/Documents/filpIQ antigravity openrouter/.kilo/worktrees/flannel-slug",
+      "parentBranch": "main",
+      "createdAt": "2026-04-02T10:38:13.485Z",
+      "remote": "origin"
+    }
+  },
+  "sessions": {
+    "ses_2b23a5274ffekVPW09lR0XhoFD": {
+      "worktreeId": "wt-1775126293484-1",
+      "createdAt": "2026-04-02T10:38:14.362Z"
+    },
+    "ses_2b23a29edffe7tMxU2Xv579zo2": {
+      "worktreeId": null,
+      "createdAt": "2026-04-02T10:38:24.639Z"
+    }
+  }
+}

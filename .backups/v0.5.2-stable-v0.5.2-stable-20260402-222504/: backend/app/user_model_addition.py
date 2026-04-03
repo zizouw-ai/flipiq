@@ -1,0 +1,23 @@
+: from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from app.database import Base
+import uuid
+from datetime import datetime
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    plan = Column(String, default="free", nullable=False)
+    stripe_customer_id = Column(String, nullable=True)
+    stripe_subscription_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.utcnow())
+    last_login = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email={self.email}>"

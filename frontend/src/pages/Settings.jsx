@@ -263,7 +263,7 @@ export default function Settings() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium text-surface-200">{h.name.replace(/\s*\d+%$/, '')}</span>
+              <span className="text-sm font-medium text-surface-200">{h.name.replace(/\s*(?:\d+%|\d+)$/, '')}</span>
               {h.is_default && <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-600/30 text-brand-400 border border-brand-500/30">DEFAULT</span>}
               {h.user_id !== null && <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-500/30 text-accent-400 border border-accent-500/30">CUSTOM</span>}
             </div>

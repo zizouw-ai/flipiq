@@ -151,11 +151,18 @@ const handleChangePassword = async (e) => {
           window.location.href = '/';
         }, 1500);
       } else {
-        const err = await res.json();
-        showMessage(err.detail || 'Failed to delete account', 'error');
+        let errorMsg = 'Failed to delete account';
+        try {
+          const err = await res.json();
+          errorMsg = err.detail || `Error ${res.status}: ${res.statusText}`;
+        } catch (parseErr) {
+          errorMsg = `Error ${res.status}: ${res.statusText}`;
+        }
+        showMessage(errorMsg, 'error');
       }
     } catch (err) {
-      showMessage('Network error', 'error');
+      console.error('Delete account error:', err);
+      showMessage(`Network error: ${err.message}. Is the backend running?`, 'error');
     } finally {
       setLoading(false);
     }

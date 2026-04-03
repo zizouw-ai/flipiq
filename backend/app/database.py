@@ -2,9 +2,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
-# Use absolute path to fix database switching issue
-# Always use the single database file at project root
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////Users/ramzi/Documents/filpIQ antigravity openrouter/flipiq.db")
+# Railway Volume is mounted at /data - use that for persistence
+# Local development falls back to project root
+DEFAULT_DB_PATH = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/Users/ramzi/Documents/filpIQ antigravity openrouter")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}/flipiq.db")
 
 # SQLite requires check_same_thread=False for FastAPI multi-threading
 # Only apply if DATABASE_URL starts with "sqlite"

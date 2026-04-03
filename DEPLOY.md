@@ -1,175 +1,146 @@
-# FlipIQ Deployment Guide
+# FlipIQ Deployment Guide (Railway)
 
-## Phase 2 — VPS Deployment (Hetzner CX22)
+This guide covers deploying FlipIQ to Railway using the Railway CLI.
 
-### Prerequisites
-- Hetzner Cloud account
-- Domain name (optional but recommended)
-- GitHub repository access
+## Prerequisites
 
-### Server Specs (CX22)
-- 2 vCPUs
-- 4 GB RAM
-- 40 GB SSD
-- ~C$5.50/month
+1. Railway CLI installed: `npm install -g @railway/cli`
+2. Railway account: https://railway.app
+3. Git repository with your code
 
----
+## Step 1: Login to Railway
 
-## Quick Deploy
-
-### 1. Create Server
 ```bash
-# On your local machine, create a new CX22 instance
-# Install Docker and Docker Compose
-ssh root@YOUR_SERVER_IP
+railway login
 ```
 
-### 2. Clone and Deploy
+## Step 2: Initialize Project
+
 ```bash
-git clone https://github.com/YOUR_USERNAME/flipiq.git /opt/flipiq
-cd /opt/flipiq
-./scripts/deploy.sh
+railway init
 ```
 
-### 3. Configure Domain & SSL (Optional)
+Select "Empty project" and name it `flipiq`.
+
+## Step 3: Create Services
+
+Create two services from your mono-repo:
+
 ```bash
-./scripts/setup-ssl.sh your-domain.com
+# Backend service
+railway service create flipiq-backend
+
+# Frontend service
+railway service create flipiq-frontend
 ```
 
----
+## Step 4: Configure Services
 
-## Manual Steps
+### Backend Service Settings
 
-### Install Dependencies
+1. **Root Directory**: Set to root `.`
+2. **Dockerfile**: `Dockerfile.backend`
+3. **Start Command**: `./start.sh`
+4. **Health Check Path**: `/health`
+5. **Volume**: Add volume mounted at `/data`
+
+### Frontend Service Settings
+
+1. **Root Directory**: Set to `frontend`
+2. **Dockerfile**: `Dockerfile.frontend`
+3. **Environment Variables**:
+   - `BACKEND_URL` = URL of your backend service
+   - `NODE_ENV` = `production`
+
+## Step 5: Set Environment Variables
+
+### Backend Variables
+
 ```bash
-# Update system
-apt update && apt upgrade -y
-
-# Install Docker
-curl -fsSL https://get.docker.com | sh
-
-# Install Docker Compose
-curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
+railway service flipiq-backend --variables
 ```
 
-### Build and Run
+Add these:
+- `DATABASE_URL` = `sqlite:////data/flipiq.db` (uses the Railway Volume)
+- `CORS_ORIGINS` = URL of your frontend service (e.g., `https://your-frontend.up.railway.app`)
+- `SECRET_KEY` = Generate a secure random key
+- `STRIPE_SECRET_KEY` = (for billing - optional)
+- `STRIPE_WEBHOOK_SECRET` = (for billing - optional)
+
+### Frontend Variables
+
 ```bash
-cd /opt/flipiq
-
-# Build images
-docker-compose build
-
-# Start services
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f
+railway service flipiq-frontend --variables
 ```
 
----
+Add:
+- `BACKEND_URL` = Backend service URL with `/api` suffix (e.g., `https://your-backend.up.railway.app/api`)
+- `VITE_API_URL` = Same as BACKEND_URL
 
-## Coolify Integration (Auto-Deploy)
+## Step 6: Deploy
 
-1. Install Coolify on your VPS:
-   ```bash
-   curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
-   ```
+Deploy both services:
 
-2. Access Coolify dashboard at `http://YOUR_SERVER_IP:8000`
-
-3. Add your GitHub repository as a source
-
-4. Create a new resource:
-   - Type: Docker Compose
-   - Repository: your/flipiq
-   - Branch: main
-   - Compose file: `docker-compose.yml`
-
-5. Configure environment variables
-
-6. Deploy
-
----
-
-## Backup Configuration
-
-### Automated Nightly Backups
-Backups are configured automatically by `deploy.sh`.
-
-To configure cloud upload:
-1. Install rclone: `apt install rclone`
-2. Configure: `rclone config`
-3. Edit `scripts/backup.sh` with your remote name
-
-### Manual Backup
 ```bash
-./scripts/backup.sh
+railway up
 ```
 
-### Restore from Backup
+Or deploy specific services:
+
 ```bash
-# Stop services
-docker-compose down
-
-# Restore database
-cp backup_file.db data/flipiq.db
-
-# Start services
-docker-compose up -d
+railway up --service flipiq-backend
+railway up --service flipiq-frontend
 ```
 
----
+## Step 7: Verify Deployment
 
-## Environment Variables
+Check logs:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | sqlite:///data/flipiq.db | Database connection |
-| `CORS_ORIGINS` | * | Allowed CORS origins |
-| `PORT` | 8000 | Backend port |
+```bash
+railway logs --service flipiq-backend
+railway logs --service flipiq-frontend
+```
 
----
+Test endpoints:
+- Backend: `https://your-backend.up.railway.app/health`
+- Frontend: `https://your-frontend.up.railway.app`
+
+## Step 8: Custom Domain (flipiq.ca)
+
+1. Go to Railway Dashboard → Your Service → Settings → Domain
+2. Add custom domain: `flipiq.ca`
+3. Follow DNS instructions (usually a CNAME record)
+4. Update CORS_ORIGINS to include `https://flipiq.ca`
+
+## Monitoring
+
+- **Logs**: `railway logs --service <service-name>`
+- **Metrics**: Railway Dashboard
+- **Health Check**: `/health` endpoint on backend
+
+## Database Persistence
+
+The SQLite database is stored in a Railway Volume at `/data/flipiq.db`. This persists across deployments and restarts.
 
 ## Troubleshooting
 
-### Check Service Status
-```bash
-docker-compose ps
-docker-compose logs backend
-docker-compose logs frontend
-```
+### Database not persisting
+- Verify the volume is mounted at `/data`
+- Check `DATABASE_URL` is set to `sqlite:////data/flipiq.db`
 
-### Restart Services
-```bash
-docker-compose restart
-```
+### CORS errors
+- Add your frontend domain to `CORS_ORIGINS`
+- Check `RAILWAY_*` environment variables are being used
 
-### Update Deployment
-```bash
-cd /opt/flipiq
-git pull
-docker-compose build
-docker-compose up -d
-```
+### Frontend can't reach backend
+- Verify `BACKEND_URL` is set correctly in frontend service
+- Check nginx.conf has the correct proxy_pass
 
----
+## Deployment Summary
 
-## Security Checklist
-
-- [ ] Change default passwords
-- [ ] Configure firewall (ufw)
-- [ ] Enable automatic security updates
-- [ ] Set up log monitoring
-- [ ] Configure fail2ban
-- [ ] Use strong SSH keys (disable password auth)
-- [ ] Regular backup testing
-
----
-
-## Next Steps (Phase 3)
-
-- Multi-user authentication (JWT)
-- Stripe billing integration
-- PostgreSQL migration
-- Landing page
+Files changed for deployment:
+- `backend/app/database.py` - Uses Railway Volume path
+- `start.sh` - Creates /data directory
+- `frontend/statics/nginx.conf` - Dynamic backend URL
+- `frontend/statics/entrypoint.sh` - Env substitution for BACKEND_URL
+- `railway.toml` - Service configuration

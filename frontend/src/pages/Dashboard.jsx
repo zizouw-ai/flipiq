@@ -21,6 +21,12 @@ export default function Dashboard() {
   const [channelData, setChannelData] = useState([]);
   const [filters, setFilters] = useState({ date_from: '', date_to: '', category: '', auction_name: '', channel: '' });
   const [chartChannel, setChartChannel] = useState('all');
+  const [planInfo, setPlanInfo] = useState(null);
+  const [exportError, setExportError] = useState('');
+
+  useEffect(() => {
+    api.getPlan().then(setPlanInfo).catch(() => {});
+  }, []);
 
   const load = () => {
     api.getKPIs(filters).then(setKpis).catch(() => {});
@@ -129,13 +135,51 @@ export default function Dashboard() {
       )}
 
       {/* Export Buttons (Feature 1.6) */}
-      <div className="flex gap-3 mb-8">
-        <button onClick={() => api.exportDashboardSummary(2026)} className="btn-primary !py-2 !text-xs" id="export-summary-btn">
-          📊 Export P&L Summary
-        </button>
-        <button onClick={() => api.exportTaxSummary(2026)} className="btn-primary !py-2 !text-xs" id="export-tax-btn">
-          🧾 Export Tax Summary
-        </button>
+      <div className="mb-8">
+        {exportError && (
+          <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">⚠️</span>
+              <div>
+                <p className="text-amber-400 font-medium">{exportError}</p>
+                <p className="text-amber-400/70 text-sm">Upgrade to Pro to unlock exports</p>
+              </div>
+            </div>
+            <a href="/pricing" className="px-4 py-2 bg-amber-500 text-surface-900 rounded-lg font-medium hover:bg-amber-400 transition-colors text-sm">
+              Upgrade Now →
+            </a>
+          </div>
+        )}
+        <div className="flex gap-3">
+          <button 
+            onClick={() => {
+              setExportError('');
+              api.exportDashboardSummary(2026).catch(err => {
+                if (err.message?.includes('402') || err.message?.includes('feature_blocked')) {
+                  setExportError('Export feature is not available on your free plan.');
+                }
+              });
+            }} 
+            className="btn-primary !py-2 !text-xs" 
+            id="export-summary-btn"
+          >
+            📊 Export P&L Summary
+          </button>
+          <button 
+            onClick={() => {
+              setExportError('');
+              api.exportTaxSummary(2026).catch(err => {
+                if (err.message?.includes('402') || err.message?.includes('feature_blocked')) {
+                  setExportError('Export feature is not available on your free plan.');
+                }
+              });
+            }} 
+            className="btn-primary !py-2 !text-xs" 
+            id="export-tax-btn"
+          >
+            🧾 Export Tax Summary
+          </button>
+        </div>
       </div>
 
       {/* Channel Performance Cards */}

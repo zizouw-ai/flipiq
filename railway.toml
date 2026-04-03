@@ -22,6 +22,9 @@ dockerfilePath = "Dockerfile.frontend"
 [service.flipiq-frontend.deploy]
 restartPolicyType = "on_failure"
 
+[service.flipiq-frontend.deploy.variables]
+BACKEND_URL = "${{RAILWAY_SERVICE_FLIQBACKEND_URL}}"
+
 [service.flipiq-frontend.variables]
 NODE_ENV = "production"
 

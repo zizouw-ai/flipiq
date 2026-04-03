@@ -21,6 +21,12 @@ export default function AuctionTracker() {
   const [showForm, setShowForm] = useState(false);
   const [showItemForm, setShowItemForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [planInfo, setPlanInfo] = useState(null);
+  const [exportError, setExportError] = useState('');
+
+  useEffect(() => {
+    api.getPlan().then(setPlanInfo).catch(() => {});
+  }, []);
 
   const [aForm, setAForm] = useState({ name: '', date: '', total_hammer: '0', payment_method: 'etransfer', notes: '', auction_house_config_id: null });
   const [iForm, setIForm] = useState({
@@ -206,10 +212,31 @@ export default function AuctionTracker() {
         <div className="lg:col-span-2">
           {selectedAuction ? (
             <div className="animate-fade-in">
+              {exportError && (
+                <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">⚠️</span>
+                    <div>
+                      <p className="text-amber-400 font-medium">{exportError}</p>
+                      <p className="text-amber-400/70 text-sm">Upgrade to Pro to unlock exports</p>
+                    </div>
+                  </div>
+                  <a href="/pricing" className="px-4 py-2 bg-amber-500 text-surface-900 rounded-lg font-medium hover:bg-amber-400 transition-colors text-sm">
+                    Upgrade Now →
+                  </a>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-surface-200">{selectedAuction.name}</h2>
                 <div className="flex gap-2">
-                  <button onClick={() => api.exportAuction(selectedAuction.id)}
+                  <button onClick={() => {
+                      setExportError('');
+                      api.exportAuction(selectedAuction.id).catch(err => {
+                        if (err.message?.includes('402') || err.message?.includes('feature_blocked')) {
+                          setExportError('Export feature is not available on your free plan.');
+                        }
+                      });
+                    }}
                     className="px-3 py-2 rounded-lg text-sm font-medium bg-surface-700/50 border border-surface-600/30 text-surface-300 hover:text-surface-100 hover:bg-surface-600/50 transition-all" id="export-auction-btn">
                     📥 Export
                   </button>

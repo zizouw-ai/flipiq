@@ -64,7 +64,6 @@ async function downloadFile(url) {
     }, 100);
   } catch (err) {
     console.error('Download failed:', err);
-    alert('Export failed: ' + err.message);
     throw err;
   }
 }
@@ -115,6 +114,8 @@ export const api = {
   getMe: () => request('/auth/me'),
 
   deleteAccount: (password) => request('/auth/me', { method: 'DELETE', body: JSON.stringify({ password }) }),
+
+  getPlan: () => request('/auth/plan'),
 
   // Calculator
   getCategories: () => request('/calculator/categories'),

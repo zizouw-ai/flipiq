@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User
+from app.models import User, Auction, Item, Calculation, UserSetting, AuctionHouseConfig, ShippingPreset, ItemTemplate
 from app.auth.jwt import (
     create_access_token,
     create_refresh_token,
@@ -387,7 +387,19 @@ def delete_user(
             detail="Incorrect password"
         )
 
-    # Delete user (cascade will handle related records)
+    # Manually delete user's items and auctions first to avoid FK constraint issues
+    # Delete items first (they reference auctions)
+    db.query(Item).filter(Item.user_id == current_user.id).delete(synchronize_session=False)
+    # Delete auctions
+    db.query(Auction).filter(Auction.user_id == current_user.id).delete(synchronize_session=False)
+    # Delete other user data
+    db.query(Calculation).filter(Calculation.user_id == current_user.id).delete(synchronize_session=False)
+    db.query(UserSetting).filter(UserSetting.user_id == current_user.id).delete(synchronize_session=False)
+    db.query(AuctionHouseConfig).filter(AuctionHouseConfig.user_id == current_user.id).delete(synchronize_session=False)
+    db.query(ShippingPreset).filter(ShippingPreset.user_id == current_user.id).delete(synchronize_session=False)
+    db.query(ItemTemplate).filter(ItemTemplate.user_id == current_user.id).delete(synchronize_session=False)
+
+    # Delete user
     db.delete(current_user)
     db.commit()
 

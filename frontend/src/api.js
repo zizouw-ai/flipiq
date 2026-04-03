@@ -30,30 +30,43 @@ async function request(url, options = {}) {
 async function downloadFile(url) {
   const authHeaders = useAuthStore.getState().getAuthHeaders()
   const isDevMode = useAuthStore.getState().devMode
-  const res = await fetch(`${API}${url}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-    },
-  });
-  if (res.status === 401 && !isDevMode) {
-    useAuthStore.getState().logout()
-    window.location.href = '/login'
-    throw new Error('Session expired. Please log in again.')
+  try {
+    const res = await fetch(`${API}${url}`, {
+      headers: {
+        ...authHeaders,
+      },
+    });
+    if (res.status === 401 && !isDevMode) {
+      useAuthStore.getState().logout()
+      window.location.href = '/login'
+      throw new Error('Session expired. Please log in again.')
+    }
+    if (res.status === 401 && isDevMode) {
+      throw new Error('Dev mode: Please enable dev mode again')
+    }
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'Unknown error');
+      throw new Error(`Download Error ${res.status}: ${errText}`);
+    }
+    const blob = await res.blob();
+    const disposition = res.headers.get('content-disposition') || '';
+    const match = disposition.match(/filename="(.+)"/);
+    const filename = match ? match[1] : 'export.xlsx';
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    }, 100);
+  } catch (err) {
+    console.error('Download failed:', err);
+    alert('Export failed: ' + err.message);
+    throw err;
   }
-  if (res.status === 401 && isDevMode) {
-    throw new Error('Dev mode: Please enable dev mode again')
-  }
-  if (!res.ok) throw new Error(`Download Error: ${res.status}`);
-  const blob = await res.blob();
-  const disposition = res.headers.get('content-disposition') || '';
-  const match = disposition.match(/filename="(.+)"/);
-  const filename = match ? match[1] : 'export.xlsx';
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
 }
 
 export const CHANNELS = [

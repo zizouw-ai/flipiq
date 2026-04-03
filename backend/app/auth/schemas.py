@@ -132,3 +132,8 @@ class PlanResponse(BaseModel):
             "limits": {"max_items": 50, "max_auction_houses": 2}
         }
     }}
+
+
+class DeleteUserRequest(BaseModel):
+    """Schema for user deletion request."""
+    password: str = Field(..., description="Current password for confirmation")

@@ -39,10 +39,13 @@ export default function AuctionTracker() {
   const createAuction = async () => {
     try {
       await api.createAuction({ ...aForm, total_hammer: parseFloat(aForm.total_hammer) || 0 });
-      setShowForm(false); setAForm({ name: '', date: '', total_hammer: '0', payment_method: 'etransfer', notes: '', auction_house_config_id: null });
+      // Only close form and reset on success
+      setShowForm(false);
+      setAForm({ name: '', date: '', total_hammer: '0', payment_method: 'etransfer', notes: '', auction_house_config_id: null });
       loadAuctions();
     } catch (err) {
       alert('Failed to create auction: ' + err.message);
+      // Keep form open so user can fix input
     }
   };
 

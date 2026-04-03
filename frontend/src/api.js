@@ -8,7 +8,11 @@ async function request(url, options = {}) {
   const authHeaders = useAuthStore.getState().getAuthHeaders()
   const isDevMode = useAuthStore.getState().devMode
   const res = await fetch(`${API}${url}`, {
-    headers: { ...authHeaders, ...options.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+      ...options.headers
+    },
     ...options,
   });
   if (res.status === 401 && !isDevMode) {
@@ -93,6 +97,8 @@ export const api = {
   },
 
   getMe: () => request('/auth/me'),
+
+  deleteAccount: (password) => request('/auth/me', { method: 'DELETE', body: JSON.stringify({ password }) }),
 
   // Calculator
   getCategories: () => request('/calculator/categories'),

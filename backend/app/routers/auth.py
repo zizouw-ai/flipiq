@@ -30,6 +30,7 @@ from app.auth.schemas import (
     UserUpdate,
     PasswordUpdate,
     PlanResponse,
+    DeleteUserRequest,
 )
 from app.plan_config import PlanType, get_plan_limits
 
@@ -361,3 +362,33 @@ def get_plan(current_user: User = Depends(get_current_user)):
         plan_name=plan_names.get(plan, "Free"),
         limits=limits
     )
+
+
+@router.delete("/me", response_model=MessageResponse)
+def delete_user(
+    request: DeleteUserRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete the current user's account.
+    Requires password confirmation for security.
+    """
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+
+    # Verify password
+    if not verify_password(request.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect password"
+        )
+
+    # Delete user (cascade will handle related records)
+    db.delete(current_user)
+    db.commit()
+
+    return MessageResponse(message="Account deleted successfully")

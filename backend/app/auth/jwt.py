@@ -171,8 +171,9 @@ def require_auth(
     # Check for dev mode token
     if token == "dev-token":
         # Return a mock user for dev mode with unlimited access
+        # Use high ID to avoid collision with real users
         return User(
-            id=1,
+            id=999999,
             email="dev@local",
             name="Developer",
             plan="pro",

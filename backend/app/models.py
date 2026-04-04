@@ -7,7 +7,7 @@ from app.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
     name = Column(String, nullable=True)
@@ -108,7 +108,7 @@ class UserSetting(Base):
 class AuctionHouseConfig(Base):
     __tablename__ = "auction_house_configs"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL = system default
     name = Column(String, nullable=False)
     buyer_premium_pct = Column(Float, default=0.0)
@@ -135,7 +135,7 @@ class AuctionHouseConfig(Base):
 class ShippingPreset(Base):
     __tablename__ = "shipping_presets"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     name = Column(String, nullable=False)
     carrier = Column(String, default="")
@@ -155,7 +155,7 @@ class ShippingPreset(Base):
 class ItemTemplate(Base):
     __tablename__ = "item_templates"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     name = Column(String, nullable=False)           # internal/legacy name
     profile_type = Column(String, default="auction")  # 'auction' | 'fixed'

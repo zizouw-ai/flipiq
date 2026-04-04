@@ -17,7 +17,8 @@ def list_presets(db: Session = Depends(get_db), current_user: User = Depends(req
 
 
 @router.post("/")
-def create_preset(data: dict, db: Session = Depends(get_db)):
+def create_preset(data: dict, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    data["user_id"] = current_user.id
     preset = ShippingPreset(**data)
     db.add(preset)
     db.commit()
@@ -26,8 +27,11 @@ def create_preset(data: dict, db: Session = Depends(get_db)):
 
 
 @router.put("/{preset_id}")
-def update_preset(preset_id: int, data: dict, db: Session = Depends(get_db)):
-    preset = db.query(ShippingPreset).filter(ShippingPreset.id == preset_id).first()
+def update_preset(preset_id: int, data: dict, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    preset = db.query(ShippingPreset).filter(
+        ShippingPreset.id == preset_id,
+        ShippingPreset.user_id == current_user.id
+    ).first()
     if not preset:
         raise HTTPException(status_code=404, detail="Preset not found")
     for k, v in data.items():
@@ -39,8 +43,11 @@ def update_preset(preset_id: int, data: dict, db: Session = Depends(get_db)):
 
 
 @router.delete("/{preset_id}")
-def delete_preset(preset_id: int, db: Session = Depends(get_db)):
-    preset = db.query(ShippingPreset).filter(ShippingPreset.id == preset_id).first()
+def delete_preset(preset_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    preset = db.query(ShippingPreset).filter(
+        ShippingPreset.id == preset_id,
+        ShippingPreset.user_id == current_user.id
+    ).first()
     if not preset:
         raise HTTPException(status_code=404, detail="Preset not found")
     db.delete(preset)

@@ -2,40 +2,29 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Item, AuctionHouseConfig, ItemTemplate
+from app.models import Item, AuctionHouseConfig, ItemTemplate, User
 from app.plan_config import PlanType, get_plan_limits
 from app.middleware.limits import (
     get_item_count, get_auction_house_count, LimitError,
     check_item_limit, check_auction_house_limit, check_export_permission, check_template_permission
 )
+from app.auth.jwt import require_auth
 
 router = APIRouter(prefix="/api", tags=["limits"])
 
 
-class CurrentUser:
-    """Mock user class for development - replace with actual auth later."""
-    def __init__(self, plan: str = "free", user_id: int = 1):
-        self.plan = plan
-        self.user_id = user_id
-
-
-def get_current_user():
-    """Get current authenticated user - placeholder for JWT auth."""
-    # TODO: Replace with actual JWT auth implementation
-    return CurrentUser(plan="free", user_id=1)
-
-
 @router.get("/auth/usage", response_model=dict)
-def get_usage(db: Session = Depends(get_db), current_user: CurrentUser = Depends(get_current_user)):
+def get_usage(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     """Get current usage counts and plan limits for the authenticated user."""
-    
+
+    user_id = int(current_user.id)  # type: ignore
     # Get current counts
-    item_count = get_item_count(db)
-    auction_house_count = get_auction_house_count(current_user.user_id, db)
+    item_count = get_item_count(db, user_id=user_id)
+    auction_house_count = get_auction_house_count(user_id, db)
     template_count = db.query(ItemTemplate).filter(
-        ItemTemplate.user_id == current_user.user_id
-    ).count() if current_user.user_id else 0
-    
+        ItemTemplate.user_id == user_id
+    ).count()
+
     # Get plan limits
     try:
         plan = PlanType(current_user.plan)
@@ -66,9 +55,9 @@ def get_usage(db: Session = Depends(get_db), current_user: CurrentUser = Depends
 
 
 @router.get("/auth/plan", response_model=dict)
-def get_plan_details(current_user: CurrentUser = Depends(get_current_user)):
+def get_plan_details(current_user: User = Depends(require_auth)):
     """Get current plan details for the authenticated user."""
-    
+
     try:
         plan = PlanType(current_user.plan)
     except ValueError:

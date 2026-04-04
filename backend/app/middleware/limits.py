@@ -125,9 +125,12 @@ def check_template_permission(user_plan: str) -> None:
         )
 
 
-def get_item_count(db: Session) -> int:
-    """Get the total count of items."""
-    return db.query(Item).count()
+def get_item_count(db: Session, user_id: Optional[int] = None) -> int:
+    """Get the total count of items for a user."""
+    query = db.query(Item)
+    if user_id is not None:
+        query = query.filter(Item.user_id == user_id)
+    return query.count()
 
 
 def get_auction_house_count(user_id: Optional[int], db: Session) -> int:

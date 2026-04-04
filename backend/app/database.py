@@ -1,11 +1,28 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Railway Volume is mounted at /data - use that for persistence
 # Local development falls back to project root
-DEFAULT_DB_PATH = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/Users/ramzi/Documents/filpIQ antigravity openrouter")
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}/flipiq.db")
+RAILWAY_VOLUME_MOUNT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+if DATABASE_URL:
+    # Use provided DATABASE_URL (PostgreSQL or explicit SQLite)
+    logger.info(f"Using DATABASE_URL from environment")
+elif RAILWAY_VOLUME_MOUNT:
+    # Railway with volume mount at /data
+    DATABASE_URL = f"sqlite:///{RAILWAY_VOLUME_MOUNT}/flipiq.db"
+    logger.info(f"Using Railway Volume at {RAILWAY_VOLUME_MOUNT}")
+else:
+    # Local development - fallback to current directory
+    DATABASE_URL = "sqlite:///./flipiq.db"
+    logger.info("Using local SQLite database")
+
+logger.info(f"Database path: {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else DATABASE_URL}")
 
 # SQLite requires check_same_thread=False for FastAPI multi-threading
 # Only apply if DATABASE_URL starts with "sqlite"
@@ -45,22 +62,26 @@ def seed_shipping_presets(db):
 
 
 def init_db():
+    from sqlalchemy import inspect
     from app.models import (  # noqa
         User, Auction, Item, Calculation, UserSetting,
         AuctionHouseConfig, ShippingPreset, ItemTemplate,
     )
-    Base.metadata.create_all(bind=engine)
 
-    # These _migrate functions are SQLite specific and should be removed for PostgreSQL
-    # _migrate_item_templates()
-    # _migrate_items()
-    # _migrate_auctions()
+    # Create tables
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables created")
+
+    # Verify tables exist
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    logger.info(f"Database tables: {tables}")
 
     # Seed default data on startup
     db = SessionLocal()
     try:
         seed_auction_houses(db)
         seed_shipping_presets(db)
+        logger.info("Default data seeded")
     finally:
         db.close()
-

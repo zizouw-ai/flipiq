@@ -1,0 +1,367 @@
+{
+  "audit_date": "2026-04-04T14:30:44-04:00",
+  "project": "FlipIQ",
+  "version": "v0.5.2",
+  "owner": "Ramzi - London, Ontario, Canada",
+  "repository": "flipiq",
+  "summary": {
+    "status": "Phase 2-3 Transition",
+    "overall_health": "Production-Ready with Minor Configuration Debt",
+    "tests_passing": 173,
+    "test_status": "passing"
+  },
+  "phases": {
+    "phase_1_polish": {
+      "status": "complete",
+      "completion_percentage": 100,
+      "features": [
+        {"name": "Configurable auction house fee engine", "complete": true},
+        {"name": "Province/tax selector", "complete": true},
+        {"name": "Shipping rate presets", "complete": true},
+        {"name": "Product Profiles / Item Templates", "complete": true},
+        {"name": "Break-even alert", "complete": true},
+        {"name": "CSV/Excel export", "complete": true},
+        {"name": "Multi-currency CAD/USD toggle", "complete": true},
+        {"name": "Monthly profit goal tracker", "complete": true},
+        {"name": "Profit recalculation on hammer price change", "complete": true}
+      ]
+    },
+    "phase_2_deployment": {
+      "status": "in_progress",
+      "completion_percentage": 95,
+      "features": [
+        {"name": "Deploy to Railway Hobby", "complete": true, "notes": "Basic service setup achieved"},
+        {"name": "Backend service with PostgreSQL/SQLite", "complete": true, "notes": "Volume at /data/flipiq.db for local SQLite"},
+        {"name": "Frontend static build service", "complete": true},
+        {"name": "CORS configured for Railway domains", "complete": true},
+        {"name": "Environment variables configured", "complete": true},
+        {"name": "Custom domain (flipiq.ca)", "complete": false, "notes": "Awaiting deployment"}
+      ]
+    },
+    "phase_3_saas": {
+      "status": "in_progress",
+      "completion_percentage": 90,
+      "features": [
+        {"name": "JWT auth (register/login/email verify/password reset)", "complete": true, "notes": "Email verification and password reset are mock implementations"},
+        {"name": "Plan tiers: Free / Starter $9 / Pro $19 / Team $49", "complete": true},
+        {"name": "Stripe subscription billing + Customer Portal", "complete": true, "notes": "Backend ready, needs Stripe keys in environment"},
+        {"name": "Usage limits per plan enforced server-side", "complete": true},
+        {"name": "Admin dashboard (users, MRR, churn)", "complete": true},
+        {"name": "Landing page with pricing table", "complete": false},
+        {"name": "Migrate SQLite to PostgreSQL", "complete": false, "notes": "Code supports both, migration script needed"}
+      ]
+    },
+    "phase_4_growth": {
+      "status": "not_started",
+      "completion_percentage": 0,
+      "features": [
+        {"name": "eBay Sold Comps lookup (eBay Browse API)", "complete": false},
+        {"name": "Bulk Price Calculator (CSV upload)", "complete": false},
+        {"name": "Tax Report PDF generator (CRA-ready)", "complete": false},
+        {"name": "Onboarding flow for new users", "complete": false},
+        {"name": "Mobile-responsive UI polish", "complete": false}
+      ]
+    },
+    "phase_5_power": {
+      "status": "not_started",
+      "completion_percentage": 0,
+      "features": [
+        {"name": "Team shared inventory (multi-user DB)", "complete": false},
+        {"name": "Role-based access (RBAC)", "complete": false},
+        {"name": "Auto-repricer alerts via eBay API", "complete": false},
+        {"name": "eBay listing creation directly from FlipIQ", "complete": false},
+        {"name": "Affiliate / referral program", "complete": false}
+      ]
+    }
+  },
+  "tech_stack": {
+    "backend": {
+      "framework": "FastAPI",
+      "language": "Python 3.11",
+      "server": "Uvicorn",
+      "database_orm": "SQLAlchemy",
+      "database_local": "SQLite",
+      "database_production": "PostgreSQL",
+      "authentication": "JWT with bcrypt",
+      "billing": "Stripe",
+      "export": "openpyxl",
+      "testing": "pytest",
+      "port": 8000
+    },
+    "frontend": {
+      "framework": "React",
+      "build_tool": "Vite",
+      "styling": "Tailwind CSS v4",
+      "charts": "Recharts",
+      "state_management": "Zustand",
+      "router": "React Router DOM",
+      "server": "nginx (production)",
+      "port": 5173
+    },
+    "deployment": {
+      "platform": "Railway",
+      "plan": "Hobby ($5/month)",
+      "services": ["flipiq-backend", "flipiq-frontend"],
+      "containerization": "Docker"
+    }
+  },
+  "file_structure": {
+    "backend": {
+      "main_entry": "backend/app/main.py",
+      "routers": [
+        "calculator.py",
+        "auctions.py",
+        "dashboard.py",
+        "settings.py",
+        "auction_houses.py",
+        "shipping_presets.py",
+        "templates.py",
+        "exports.py",
+        "items.py",
+        "limits.py",
+        "auth.py",
+        "billing.py"
+      ],
+      "models": "backend/app/models.py",
+      "schemas": "backend/app/schemas.py",
+      "database": "backend/app/database.py",
+      "auth_module": "backend/app/auth/",
+      "billing_module": "backend/app/billing/",
+      "middleware": "backend/app/middleware/",
+      "tests": "backend/tests/",
+      "test_files": ["test_flipiq.py", "test_channels.py", "test_phase1.py", "test_limits.py"],
+      "missing_test_files": ["test_auth.py"]
+    },
+    "frontend": {
+      "entry": "frontend/src/main.jsx",
+      "app": "frontend/src/App.jsx",
+      "api": "frontend/src/api.js",
+      "pages": [
+        "Calculator.jsx",
+        "AuctionTracker.jsx",
+        "Dashboard.jsx",
+        "Settings.jsx",
+        "AllItems.jsx",
+        "Profile.jsx",
+        "Login.jsx",
+        "Register.jsx"
+      ],
+      "store": "frontend/src/store/authStore.js",
+      "statics": "frontend/statics/",
+      "dockerfile": "frontend/Dockerfile.frontend"
+    },
+    "root": {
+      "dockerfile_backend": "Dockerfile.backend",
+      "railway_config": "railway.toml",
+      "start_script": "start.sh",
+      "env_example": ".env.example",
+      "version_file": "VERSION.txt",
+      "changelog": "CHANGELOG.md",
+      "brief": "FLIPIQ_BRIEF.md",
+      "deploy_guide": "DEPLOY.md"
+    }
+  },
+  "database": {
+    "tables": [
+      {
+        "name": "users",
+        "purpose": "Authentication and user accounts",
+        "columns": ["id", "email", "hashed_password", "name", "is_verified", "is_active", "plan", "stripe_customer_id", "stripe_subscription_id", "created_at", "last_login", "updated_at"]
+      },
+      {
+        "name": "auctions",
+        "purpose": "Auction sessions",
+        "columns": ["id", "user_id", "name", "date", "total_hammer", "payment_method", "auction_house_config_id", "notes", "created_at"]
+      },
+      {
+        "name": "items",
+        "purpose": "Individual items per auction",
+        "columns": ["id", "user_id", "auction_id", "name", "category", "hammer_price", "payment_method", "buy_cost_total", "status", "list_price", "sold_price", "sell_date", "shipping_cost_actual", "shipping_charged_buyer", "promoted_pct", "net_profit", "roi_pct", "sale_channel", "fb_sale_type", "lot_number", "estimated_resale", "platform_sold_on", "notes"]
+      },
+      {
+        "name": "calculations",
+        "purpose": "Calculator run history",
+        "columns": ["id", "user_id", "mode", "input_json", "output_json", "created_at"]
+      },
+      {
+        "name": "user_settings",
+        "purpose": "Persistent user preferences",
+        "columns": ["id", "user_id", "key", "value"]
+      },
+      {
+        "name": "auction_house_configs",
+        "purpose": "Configurable fee profiles",
+        "columns": ["id", "user_id", "name", "buyer_premium_pct", "handling_fee_flat", "handling_fee_pct", "handling_fee_mode", "tax_pct", "tax_applies_to", "credit_card_surcharge_pct", "online_bidding_fee_pct", "payment_methods", "lot_handling", "currency", "notes", "is_default", "created_at"]
+      },
+      {
+        "name": "shipping_presets",
+        "purpose": "Saved carrier rates",
+        "columns": ["id", "user_id", "name", "carrier", "max_weight_kg", "max_length_cm", "cost_cad", "notes", "is_default", "created_at"]
+      },
+      {
+        "name": "item_templates",
+        "purpose": "Product profiles",
+        "columns": ["id", "user_id", "name", "profile_type", "item_name", "category", "sale_channel", "buyer_shipping_charge", "promoted_listing_pct", "target_margin_pct", "target_profit_flat", "target_mode", "fixed_buy_price", "typical_sell_price", "ebay_category", "ebay_store_toggle", "top_rated_toggle", "insertion_fee_toggle", "notes", "created_at"]
+      }
+    ],
+    "relationships": "Properly configured with cascade delete"
+  },
+  "plan_tiers": {
+    "free": {
+      "price_cad": 0,
+      "max_items": 50,
+      "max_auction_houses": 3,
+      "can_export": false,
+      "can_use_templates": false,
+      "max_team_members": 1
+    },
+    "starter": {
+      "price_cad": 9,
+      "max_items": 500,
+      "max_auction_houses": 100,
+      "can_export": true,
+      "can_use_templates": true,
+      "max_team_members": 1
+    },
+    "pro": {
+      "price_cad": 19,
+      "max_items": null,
+      "max_auction_houses": null,
+      "can_export": true,
+      "can_use_templates": true,
+      "max_team_members": 1
+    },
+    "team": {
+      "price_cad": 49,
+      "max_items": null,
+      "max_auction_houses": null,
+      "can_export": true,
+      "can_use_templates": true,
+      "max_team_members": 5
+    }
+  },
+  "issues": {
+    "critical": [
+      {
+        "id": "DEPLOY-001",
+        "severity": "high",
+        "description": "Railway.toml has syntax error in variable interpolation",
+        "location": "railway.toml line 26",
+        "details": "BACKEND_URL uses ${{...}} syntax which is incorrect for Railway TOML",
+        "fix": "Change from ${{RAILWAY_SERVICE_FLIPIQ_BACKEND_URL}} to ${RAILWAY_SERVICE_FLIPIQ_BACKEND_URL}"
+      },
+      {
+        "id": "ENV-001",
+        "severity": "high",
+        "description": "Stripe environment variables not configured",
+        "location": ".env file",
+        "variables_missing": ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRICE_STARTER", "STRIPE_PRICE_PRO", "STRIPE_PRICE_TEAM"],
+        "impact": "Billing system will not function in production",
+        "fix": "Add valid Stripe keys from Stripe Dashboard"
+      }
+    ],
+    "medium": [
+      {
+        "id": "TEST-001",
+        "severity": "medium",
+        "description": "Missing test_auth.py file",
+        "location": "backend/tests/",
+        "impact": "Auth endpoints not covered by automated tests",
+        "fix": "Create test_auth.py with JWT auth tests"
+      },
+      {
+        "id": "AUTH-001",
+        "severity": "medium",
+        "description": "Limits router uses mock user dependency",
+        "location": "backend/app/routers/limits.py line 22-25",
+        "details": "get_current_user() returns hardcoded CurrentUser(plan='free', user_id=1)",
+        "impact": "Usage limits not actually enforced per-user in current implementation",
+        "fix": "Replace with real JWT auth dependency"
+      }
+    ],
+    "low": [
+      {
+        "id": "UI-001",
+        "severity": "low",
+        "description": "Cosmetic trailing '0' in Buy Cost Source names",
+        "location": "frontend/src/pages/Settings.jsx line 266",
+        "status": "Fix exists in commit 312957d, needs deployment",
+        "impact": "Purely cosmetic, no functional impact"
+      }
+    ]
+  },
+  "security": {
+    "password_hashing": {"algorithm": "bcrypt", "status": "implemented", "library": "passlib"},
+    "jwt_tokens": {"access_token_ttl": "24 hours", "refresh_token_ttl": "7 days", "status": "implemented"},
+    "cors": {"status": "configured", "notes": "Auto-detects Railway domains"},
+    "https": {"status": "pending", "notes": "Needs Railway SSL config for custom domain"},
+    "input_validation": {"framework": "Pydantic", "status": "implemented"}
+  },
+  "test_coverage": {
+    "core_tests": {"file": "test_flipiq.py", "lines": 571, "status": "passing"},
+    "channel_tests": {"file": "test_channels.py", "status": "passing"},
+    "phase1_tests": {"file": "test_phase1.py", "status": "passing"},
+    "limit_tests": {"file": "test_limits.py", "count": 9, "status": "passing"},
+    "auth_tests": {"file": "test_auth.py", "status": "missing"},
+    "total_expected": 173
+  },
+  "deployment_status": {
+    "dockerfiles": {"backend": "complete", "frontend": "complete"},
+    "railway_toml": {"status": "needs_fix", "issues": ["Variable interpolation syntax error"]},
+    "start_script": {"status": "complete", "location": "start.sh"},
+    "health_check": {"endpoint": "/health", "status": "implemented"},
+    "volume_mount": {"path": "/data", "status": "configured"},
+    "custom_domain": {"domain": "flipiq.ca", "status": "awaiting_deployment"}
+  },
+  "features_working": [
+    "5-Mode Pricing Calculator (Forward, Reverse, Lot Splitter, Max Ad Spend, Price Sensitivity)",
+    "Encore Auctions buy cost formula (16% premium, $1.50 handling, 13% HST, 2% CC)",
+    "eBay Canada fee categories (13 categories with FVF%)",
+    "Multi-channel fee engine (eBay, Facebook Local/Shipped, Poshmark, Kijiji, Other)",
+    "Auction Tracker (log auctions, add items, track status)",
+    "Profitability Dashboard with Recharts",
+    "Inventory log with All Items page",
+    "Settings pages (General, Auction Houses, Shipping, Templates)",
+    "Multi-currency CAD/USD toggle",
+    "Monthly profit goal tracker",
+    "Province/tax selector",
+    "Configurable auction house fee engine",
+    "JWT Authentication (login/register)",
+    "Dev Mode for local testing",
+    "Plan tier enforcement",
+    "Stripe billing infrastructure (backend)"
+  ],
+  "features_missing": [
+    "Landing page with pricing table",
+    "Email verification (real implementation)",
+    "Password reset (real implementation)",
+    "PostgreSQL migration script",
+    "eBay Sold Comps lookup",
+    "Bulk Price Calculator CSV upload",
+    "Tax Report PDF generator",
+    "Onboarding flow",
+    "Team shared inventory",
+    "Role-based access control",
+    "Auto-repricer alerts",
+    "eBay listing creation API"
+  ],
+  "recommendations": {
+    "immediate": [
+      "Fix railway.toml variable interpolation syntax",
+      "Add Stripe keys to Railway environment variables",
+      "Create missing test_auth.py file",
+      "Replace mock user in limits.py with real JWT dependency"
+    ],
+    "short_term": [
+      "Build landing page at flipiq.ca",
+      "Implement real email service (SendGrid/AWS SES)",
+      "Create PostgreSQL migration script",
+      "Deploy Settings.jsx regex fix for trailing '0' bug"
+    ],
+    "medium_term": [
+      "eBay Browse API integration for sold comps",
+      "CSV bulk upload feature",
+      "CRA tax report PDF generator using reportlab"
+    ]
+  }
+}

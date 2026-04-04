@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.database import Base, get_db
-from app.routers.limits import get_current_user
+from app.auth.jwt import require_auth
 
 TEST_DB_URL = "sqlite:///./test_flipiq.db"
 engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
@@ -24,19 +24,26 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 
+from app.models import User
+
+
 class MockProUser:
     """Mock authenticated user with Pro plan for testing."""
     def __init__(self):
+        self.id = 1
         self.plan = "pro"
-        self.user_id = 1
+        self.email = "test@example.com"
+        self.name = "Test User"
+        self.is_active = 1
+        self.is_verified = 1
 
 
-def override_get_current_user():
+def override_require_auth():
     """Override to provide mock Pro user during tests."""
     return MockProUser()
 
 
-app.dependency_overrides[get_current_user] = override_get_current_user
+app.dependency_overrides[require_auth] = override_require_auth
 
 
 @pytest.fixture(autouse=True)

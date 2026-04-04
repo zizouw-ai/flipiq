@@ -1,14 +1,15 @@
 import logging
+import os
 
 # Configure basic logging to stdout
-logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(name)s:%(lineno)d: %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(name)s:%(lineno)d: %(message)s')
 logger = logging.getLogger(__name__)
 
 """FastAPI main application entry point for FlipIQ."""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import init_db
+from app.database import init_db, DATABASE_URL, RAILWAY_VOLUME_MOUNT
 from app.routers import calculator, auctions, dashboard, settings, limits
 from app.routers import auction_houses, shipping_presets, templates, exports
 from app.routers import items as items_router
@@ -28,8 +29,6 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan,
 )
-
-import os
 
 # CORS: Allow Railway domains + local dev
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
@@ -66,10 +65,68 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/test-log")
 def test_log():
     logger.info("Test log endpoint hit!")
     return {"status": "Log message sent"}
+
+
+@app.get("/debug/status")
+def debug_status():
+    """Debug endpoint to check application status."""
+    import os
+    from sqlalchemy import inspect
+    from app.database import engine, SessionLocal
+    from app.models import User, Auction
+
+    # Check database file status
+    db_file_exists = False
+    db_file_path = None
+    if DATABASE_URL.startswith("sqlite"):
+        db_path = DATABASE_URL.replace("sqlite:///", "")
+        db_file_exists = os.path.exists(db_path)
+        db_file_path = db_path
+
+    # Check tables exist
+    tables = []
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+    except Exception as e:
+        logger.error(f"Error inspecting database: {e}")
+
+    # Get counts
+    user_count = 0
+    auction_count = 0
+    try:
+        db = SessionLocal()
+        user_count = db.query(User).count()
+        auction_count = db.query(Auction).count()
+        db.close()
+    except Exception as e:
+        logger.error(f"Error counting records: {e}")
+
+    return {
+        "app": "FlipIQ",
+        "version": "2.0.0",
+        "status": "running",
+        "environment": {
+            "railway_volume_mount": RAILWAY_VOLUME_MOUNT or "NOT_SET",
+            "database_url_type": "postgresql" if DATABASE_URL.startswith("postgresql") else "sqlite",
+            "database_path": db_file_path,
+            "db_file_exists": db_file_exists,
+            "jwt_secret_set": bool(os.getenv("JWT_SECRET_KEY")),
+            "cors_origins_count": len(CORS_ORIGINS),
+            "cors_origins": CORS_ORIGINS,
+        },
+        "database": {
+            "tables": tables,
+            "user_count": user_count,
+            "auction_count": auction_count,
+        }
+    }
+
 
 app.include_router(calculator.router)
 app.include_router(auctions.router)
@@ -92,4 +149,4 @@ def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "2.0.0"}

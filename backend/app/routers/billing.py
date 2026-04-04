@@ -2,18 +2,20 @@
 """Billing API endpoints for Stripe subscription management."""
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Dict, Optional, Any
 import json
+import os
 from app.database import get_db
 from app.models import User
 from app.plan_config import PlanType
 from app.billing.stripe_service import (
-    initialize_stripe, create_customer, create_checkout_session, 
-    create_portal_session, handle_webhook, update_user_plan, 
-    get_subscription, get_customer_subscription
+    initialize_stripe, create_customer, create_checkout_session,
+    create_portal_session, handle_webhook, update_user_plan,
+    get_subscription, get_customer_subscription, get_plan_from_price
 )
-from app.middleware.limits import CurrentUser, get_current_user
+from app.auth.jwt import require_auth
 
 router = APIRouter(prefix="/api", tags=["billing"])
 
@@ -51,11 +53,11 @@ class BillingStatusResponse(BaseModel):
 async def create_checkout(
     request: CreateCheckoutRequest,
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: User = Depends(require_auth)
 ):
     """
     Create a Stripe Checkout session for subscription.
-    
+
     - Creates Stripe Customer if not exists
     - Creates Checkout Session for selected plan
     - Returns session ID and URL for redirect
@@ -63,9 +65,9 @@ async def create_checkout(
     # Validate plan
     if request.plan not in ["starter", "pro", "team"]:
         raise HTTPException(status_code=400, detail="Invalid plan selected")
-    
-    # Get user from DB (real user, not mock)
-    user = db.query(User).filter(User.id == current_user.user_id).first()
+
+    # Get user from DB
+    user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -104,21 +106,25 @@ async def create_checkout(
 @router.post("/billing/webhook")
 async def webhook(
     request: Request,
-    stripe_signature: Optional[str] = Header(None, alias="Stripe-Signature")
+    stripe_signature: Optional[str] = Header(None, alias="Stripe-Signature"),
+    db: Session = Depends(get_db)
 ):
     """
     Handle Stripe webhook events for subscription changes.
-    
+
     Event types handled:
     - invoice.payment_succeeded: Activate subscription
     - customer.subscription.updated: Update user plan
     - customer.subscription.deleted: Downgrade to free plan
     """
+    import stripe
+    WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
     payload = await request.body()
-    
+
     if not stripe_signature:
         raise HTTPException(status_code=400, detail="Missing Stripe signature")
-    
+
     try:
         event = handle_webhook(payload, stripe_signature, WEBHOOK_SECRET)
     except stripe.error.SignatureVerificationError:
@@ -175,14 +181,14 @@ async def webhook(
 @router.get("/billing/portal", response_model=PortalResponse)
 async def get_portal_url(
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: User = Depends(require_auth)
 ):
     """
     Create and return Stripe Customer Portal URL for managing subscription.
-    
+
     Customer can update payment method, change plan, cancel subscription.
     """
-    user = db.query(User).filter(User.id == current_user.user_id).first()
+    user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -206,14 +212,14 @@ async def get_portal_url(
 @router.get("/billing/status", response_model=BillingStatusResponse)
 async def get_billing_status(
     db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user)
+    current_user: User = Depends(require_auth)
 ):
     """
     Get current billing status and subscription details for the user.
-    
+
     Returns plan, subscription status, period end date, and usage stats.
     """
-    user = db.query(User).filter(User.id == current_user.user_id).first()
+    user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     

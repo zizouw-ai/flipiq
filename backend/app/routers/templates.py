@@ -2,9 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import ItemTemplate
+from app.models import ItemTemplate, User
 from app.middleware.limits import check_template_permission, raise_http_error_from_limit_error
-from app.routers.limits import get_current_user
+from app.auth.jwt import require_auth
 
 router = APIRouter(prefix="/api/templates", tags=["profiles"])
 
@@ -15,17 +15,16 @@ def list_profiles(db: Session = Depends(get_db)):
 
 
 @router.post("/")
-def create_profile(data: dict, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def create_profile(data: dict, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     # Check template permission before creating
     try:
-        
         check_template_permission(current_user.plan)
     except Exception as e:
         if hasattr(e, "error_code"):
             raise_http_error_from_limit_error(e)
         else:
             raise
-    
+
     # item_name is required
     item_name = (data.get("item_name") or "").strip()
     if not item_name:
@@ -39,6 +38,7 @@ def create_profile(data: dict, db: Session = Depends(get_db), current_user = Dep
     # Clear fixed_buy_price for auction profiles
     if data.get("profile_type", "auction") == "auction":
         data.pop("fixed_buy_price", None)
+    data["user_id"] = current_user.id
     tmpl = ItemTemplate(**data)
     db.add(tmpl)
     db.commit()
@@ -47,8 +47,11 @@ def create_profile(data: dict, db: Session = Depends(get_db), current_user = Dep
 
 
 @router.put("/{profile_id}")
-def update_profile(profile_id: int, data: dict, db: Session = Depends(get_db)):
-    tmpl = db.query(ItemTemplate).filter(ItemTemplate.id == profile_id).first()
+def update_profile(profile_id: int, data: dict, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    tmpl = db.query(ItemTemplate).filter(
+        ItemTemplate.id == profile_id,
+        ItemTemplate.user_id == current_user.id
+    ).first()
     if not tmpl:
         raise HTTPException(status_code=404, detail="Profile not found")
     for k, v in data.items():
@@ -63,16 +66,22 @@ def update_profile(profile_id: int, data: dict, db: Session = Depends(get_db)):
 
 
 @router.get("/{profile_id}")
-def get_profile(profile_id: int, db: Session = Depends(get_db)):
-    tmpl = db.query(ItemTemplate).filter(ItemTemplate.id == profile_id).first()
+def get_profile(profile_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    tmpl = db.query(ItemTemplate).filter(
+        ItemTemplate.id == profile_id,
+        ItemTemplate.user_id == current_user.id
+    ).first()
     if not tmpl:
         raise HTTPException(status_code=404, detail="Profile not found")
     return tmpl
 
 
 @router.delete("/{profile_id}")
-def delete_profile(profile_id: int, db: Session = Depends(get_db)):
-    tmpl = db.query(ItemTemplate).filter(ItemTemplate.id == profile_id).first()
+def delete_profile(profile_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    tmpl = db.query(ItemTemplate).filter(
+        ItemTemplate.id == profile_id,
+        ItemTemplate.user_id == current_user.id
+    ).first()
     if not tmpl:
         raise HTTPException(status_code=404, detail="Profile not found")
     db.delete(tmpl)

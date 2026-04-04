@@ -4,27 +4,56 @@ const API = `${API_BASE}/api`;
 
 import { useAuthStore } from './store/authStore'
 
+// Debug logging
+const DEBUG = true;
+function log(...args) {
+  if (DEBUG) console.log('[API]', ...args);
+}
+
 async function request(url, options = {}) {
+  const fullUrl = `${API}${url}`;
+  log('Requesting:', fullUrl, options.method || 'GET');
+  
   const authHeaders = useAuthStore.getState().getAuthHeaders()
   const isDevMode = useAuthStore.getState().devMode
-  const res = await fetch(`${API}${url}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders,
-      ...options.headers
-    },
-    ...options,
-  });
-  if (res.status === 401 && !isDevMode) {
-    useAuthStore.getState().logout()
-    window.location.href = '/login'
-    throw new Error('Session expired. Please log in again.')
+  
+  try {
+    const res = await fetch(fullUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders,
+        ...options.headers
+      },
+      ...options,
+    });
+    
+    log('Response:', res.status, url);
+    
+    if (res.status === 401 && !isDevMode) {
+      useAuthStore.getState().logout()
+      window.location.href = '/login'
+      throw new Error('Session expired. Please log in again.')
+    }
+    if (res.status === 401 && isDevMode) {
+      throw new Error('Dev mode: Please enable dev mode again')
+    }
+    if (res.status === 404) {
+      const errText = await res.text().catch(() => 'Not found');
+      throw new Error(`API Error 404: ${errText}`);
+    }
+    if (res.status === 405) {
+      throw new Error(`API Error 405: Method not allowed. Check backend configuration.`);
+    }
+    if (!res.ok) {
+      const errText = await res.text().catch(() => `HTTP ${res.status}`);
+      throw new Error(`API Error ${res.status}: ${errText}`);
+    }
+    
+    return res.json();
+  } catch (err) {
+    log('Request failed:', url, err.message);
+    throw err;
   }
-  if (res.status === 401 && isDevMode) {
-    throw new Error('Dev mode: Please enable dev mode again')
-  }
-  if (!res.ok) throw new Error(`API Error: ${res.status}`);
-  return res.json();
 }
 
 async function downloadFile(url) {
@@ -77,21 +106,29 @@ export const CHANNELS = [
   { value: 'other', label: 'Other (no fees)', color: '#64748b' },
 ];
 
-export const CHANNEL_MAP = Object.fromEntries(CHANNELS.map(c => [c.value, c]));
+export const CHANNEL_MAP = Object.fromEntries(CHANNELS.map(c => [c.value, c.label]));
 
 export const api = {
   // Auth
   login: async (email, password) => {
-    const res = await fetch(`${API}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail || 'Login failed')
+    const fullUrl = `${API}/auth/login`;
+    log('Login request:', fullUrl);
+    try {
+      const res = await fetch(fullUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      log('Login response:', res.status);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Login failed: ${res.status}`);
+      }
+      return res.json();
+    } catch (err) {
+      log('Login error:', err.message);
+      throw err;
     }
-    return res.json()
   },
 
   register: async (name, email, password) => {
@@ -99,16 +136,16 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
-    })
+    });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail || 'Registration failed')
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Registration failed');
     }
-    return res.json()
+    return res.json();
   },
 
   logout: () => {
-    useAuthStore.getState().logout()
+    useAuthStore.getState().logout();
   },
 
   getMe: () => request('/auth/me'),
@@ -206,3 +243,7 @@ export const api = {
   getItemsSummary: () => request('/items/summary'),
   getItemCategories: () => request('/items/categories'),
 };
+
+// Log API configuration on load
+log('API_BASE:', API_BASE || '(empty - using relative)');
+log('Full API URL:', API);

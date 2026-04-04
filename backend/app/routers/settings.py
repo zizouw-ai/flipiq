@@ -2,8 +2,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import UserSetting
+from app.models import UserSetting, User
 from app.schemas import SettingUpdate, SettingResponse
+from app.auth.jwt import require_auth
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -27,22 +28,29 @@ DEFAULT_SETTINGS = {
 
 
 @router.get("/", response_model=list[SettingResponse])
-def get_all_settings(db: Session = Depends(get_db)):
-    settings = db.query(UserSetting).all()
-    # Ensure defaults exist
+def get_all_settings(db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    settings = db.query(UserSetting).filter(
+        UserSetting.user_id == current_user.id
+    ).all()
+    # Ensure defaults exist for this user
     existing_keys = {s.key for s in settings}
     for k, v in DEFAULT_SETTINGS.items():
         if k not in existing_keys:
-            s = UserSetting(key=k, value=v)
+            s = UserSetting(key=k, value=v, user_id=current_user.id)
             db.add(s)
             settings.append(s)
     db.commit()
-    return db.query(UserSetting).all()
+    return db.query(UserSetting).filter(
+        UserSetting.user_id == current_user.id
+    ).all()
 
 
 @router.get("/{key}")
-def get_setting(key: str, db: Session = Depends(get_db)):
-    setting = db.query(UserSetting).filter(UserSetting.key == key).first()
+def get_setting(key: str, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    setting = db.query(UserSetting).filter(
+        UserSetting.key == key,
+        UserSetting.user_id == current_user.id
+    ).first()
     if setting:
         return {"key": setting.key, "value": setting.value}
     # Return default if exists
@@ -52,26 +60,32 @@ def get_setting(key: str, db: Session = Depends(get_db)):
 
 
 @router.put("/")
-def update_setting(req: SettingUpdate, db: Session = Depends(get_db)):
-    setting = db.query(UserSetting).filter(UserSetting.key == req.key).first()
+def update_setting(req: SettingUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    setting = db.query(UserSetting).filter(
+        UserSetting.key == req.key,
+        UserSetting.user_id == current_user.id
+    ).first()
     if setting:
         setting.value = req.value
     else:
-        setting = UserSetting(key=req.key, value=req.value)
+        setting = UserSetting(key=req.key, value=req.value, user_id=current_user.id)
         db.add(setting)
     db.commit()
     return {"key": req.key, "value": req.value}
 
 
 @router.put("/bulk")
-def update_settings_bulk(settings: list[SettingUpdate], db: Session = Depends(get_db)):
+def update_settings_bulk(settings: list[SettingUpdate], db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     results = []
     for req in settings:
-        setting = db.query(UserSetting).filter(UserSetting.key == req.key).first()
+        setting = db.query(UserSetting).filter(
+            UserSetting.key == req.key,
+            UserSetting.user_id == current_user.id
+        ).first()
         if setting:
             setting.value = req.value
         else:
-            setting = UserSetting(key=req.key, value=req.value)
+            setting = UserSetting(key=req.key, value=req.value, user_id=current_user.id)
             db.add(setting)
         results.append({"key": req.key, "value": req.value})
     db.commit()

@@ -19,7 +19,7 @@ PYTHONUNBUFFERED = "1"
 rootDirectory = "frontend"
 dockerfilePath = "Dockerfile.frontend"
 
-[service.flipiq-frontend.build.buildArgs]
+[service.flipiq-frontend.build.args]
 VITE_API_URL = "https://flipiq-backend-production-5109.up.railway.app"
 
 [service.flipiq-frontend.variables]

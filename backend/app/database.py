@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 import logging
@@ -63,11 +63,19 @@ def seed_shipping_presets(db):
 
 def init_db():
     from sqlalchemy import inspect
-    from app.models import (  # noqa
+    from app.models import ( # noqa
         User, Auction, Item, Calculation, UserSetting,
         AuctionHouseConfig, ShippingPreset, ItemTemplate,
     )
 
+    # Check if we need to recreate tables (for PostgreSQL migration)
+    force_recreate = os.getenv("FORCE_DB_RECREATE", "").lower() == "true"
+    
+    if force_recreate and DATABASE_URL.startswith("postgresql"):
+        logger.info("FORCE_DB_RECREATE is true - dropping all tables")
+        Base.metadata.drop_all(bind=engine)
+        logger.info("All tables dropped")
+    
     # Create tables
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")

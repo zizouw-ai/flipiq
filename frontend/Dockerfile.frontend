@@ -18,10 +18,18 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Copy nginx config to builder for later use
+RUN cp statics/nginx.conf /tmp/nginx.conf
+
 # Production stage - just nginx
 FROM nginx:alpine
+
+# Force cache invalidation
+ARG BUILD_DATE=now
+RUN echo "Build: ${BUILD_DATE}"
+
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY statics/nginx.conf /etc/nginx/nginx.conf
+COPY --from=builder /tmp/nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

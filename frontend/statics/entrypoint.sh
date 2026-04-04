@@ -2,7 +2,13 @@
 set -e
 
 # Set default BACKEND_URL if not provided
-export BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
+export BACKEND_URL=${BACKEND_URL:-http://localhost:8000/}
+
+# Ensure BACKEND_URL has trailing slash
+case "$BACKEND_URL" in
+    */) ;;
+    *) BACKEND_URL="${BACKEND_URL}/" ;;
+esac
 
 # Substitute PORT and BACKEND_URL in nginx config
 envsubst '\$PORT \$BACKEND_URL' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf

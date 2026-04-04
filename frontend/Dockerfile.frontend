@@ -7,28 +7,21 @@ WORKDIR /app
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
-# Debug - print the value
-RUN echo "===== VITE_API_URL = ${VITE_API_URL} ====="
+# Debug output
+RUN echo "Building with VITE_API_URL=${VITE_API_URL}"
 
-# Copy package files
+# Install dependencies
 COPY package*.json ./
 RUN npm ci
 
 # Copy source and build
 COPY . .
-RUN echo "Building with VITE_API_URL=${VITE_API_URL}" && npm run build
+RUN npm run build
 
-# Production with nginx
+# Production stage - just nginx
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY statics/nginx.conf /etc/nginx/conf.d/default.conf.template
-COPY statics/entrypoint.sh /entrypoint.sh
-
-RUN chmod +x /entrypoint.sh
-
-# Install envsubst
-RUN apk add --no-cache gettext
+COPY statics/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
-
-CMD ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]

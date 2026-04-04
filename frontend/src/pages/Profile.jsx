@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
-const API = `${API_BASE}/api`;
+import { API_URL } from '../config';
 
 export default function Profile() {
   const { user, token } = useAuthStore();
@@ -29,7 +27,7 @@ export default function Profile() {
 
   const fetchPlan = async () => {
     try {
-      const res = await fetch(`${API}/auth/plan`, {
+      const res = await fetch(`${API_URL}/auth/plan`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -50,7 +48,7 @@ export default function Profile() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/me`, {
+      const res = await fetch(`${API_URL}/auth/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +88,7 @@ const handleChangePassword = async (e) => {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/password`, {
+      const res = await fetch(`${API_URL}/auth/password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +132,7 @@ const handleChangePassword = async (e) => {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API}/auth/me`, {
+      const res = await fetch(`${API_URL}/auth/me`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

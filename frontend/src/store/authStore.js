@@ -1,10 +1,11 @@
+/**
+ * FlipIQ Auth Store
+ * Zustand store for authentication state
+ */
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-
-const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-const RAILWAY_BACKEND_URL = 'https://flipiq-backend-production-5109.up.railway.app/api'
-const API_BASE = isLocalhost ? (import.meta.env.VITE_API_URL || '') : RAILWAY_BACKEND_URL
-const API = `${API_BASE}/api`
+import { API_URL } from '../config'
 
 export const useAuthStore = create(
   persist(
@@ -19,14 +20,14 @@ export const useAuthStore = create(
       login: async (email, password) => {
         set({ isLoading: true, error: null })
         try {
-          const res = await fetch(`${API}/auth/login`, {
+          const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
           })
           if (!res.ok) {
             const err = await res.json().catch(() => ({}))
-            const message = err.detail || err.message || err.error || (typeof err === 'object' && Object.keys(err).length > 0 ? JSON.stringify(err) : 'Login failed')
+            const message = err.detail || err.message || err.error || 'Login failed'
             throw new Error(message)
           }
           const data = await res.json()
@@ -39,7 +40,7 @@ export const useAuthStore = create(
           })
           return true
         } catch (err) {
-          const errorMessage = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err))
+          const errorMessage = err.message || String(err)
           set({ isLoading: false, error: errorMessage })
           return false
         }
@@ -48,20 +49,20 @@ export const useAuthStore = create(
       register: async (name, email, password) => {
         set({ isLoading: true, error: null })
         try {
-          const res = await fetch(`${API}/auth/register`, {
+          const res = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, email, password }),
           })
           if (!res.ok) {
             const err = await res.json().catch(() => ({}))
-            const message = err.detail || err.message || err.error || (typeof err === 'object' && Object.keys(err).length > 0 ? JSON.stringify(err) : 'Registration failed')
+            const message = err.detail || err.message || err.error || 'Registration failed'
             throw new Error(message)
           }
           set({ isLoading: false })
           return true
         } catch (err) {
-          const errorMessage = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err))
+          const errorMessage = err.message || String(err)
           set({ isLoading: false, error: errorMessage })
           return false
         }
@@ -90,10 +91,11 @@ export const useAuthStore = create(
 
       getAuthHeaders: () => {
         const { token, devMode } = get()
-        if (devMode) return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-        return token
-          ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-          : { 'Content-Type': 'application/json' }
+        const baseHeaders = { 'Content-Type': 'application/json' }
+        if (devMode || token) {
+          return { ...baseHeaders, Authorization: `Bearer ${token || 'dev-token'}` }
+        }
+        return baseHeaders
       },
     }),
     {

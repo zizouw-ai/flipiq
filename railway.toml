@@ -23,7 +23,10 @@ dockerfilePath = "Dockerfile.frontend"
 restartPolicyType = "on_failure"
 
 [service.flipiq-frontend.build.buildArgs]
-VITE_API_URL = "https://flipiq-backend-production-5109.up.railway.app/api"
+VITE_API_URL = ""
+
+[service.flipiq-frontend.deploy.variables]
+BACKEND_URL = "https://flipiq-backend-production-5109.up.railway.app/"
 
 [service.flipiq-frontend.variables]
 NODE_ENV = "production"

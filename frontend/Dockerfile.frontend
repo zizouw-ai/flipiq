@@ -17,14 +17,13 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Copy nginx config to builder for later use
-RUN cp statics/nginx.conf /tmp/nginx.conf
-
 # Production stage - just nginx
 FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY --from=builder /tmp/nginx.conf /etc/nginx/nginx.conf
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Copy nginx config as template for envsubst
+COPY statics/nginx.conf /etc/nginx/conf.d/default.conf.template
+
+EXPOSE 8080
+CMD ["/bin/sh", "-c", "envsubst '\$PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

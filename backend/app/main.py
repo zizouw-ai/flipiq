@@ -30,20 +30,26 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS: Allow Railway domains + local dev
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+# CORS: Allow all Railway domains + local dev + wildcard for production
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "").split(",")
+CORS_ORIGINS = [o.strip() for o in CORS_ORIGINS if o.strip()]
 
-# Also allow any Railway app domain
+# Default dev origins
+CORS_ORIGINS.extend([
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://flipiq-frontend-production.up.railway.app",
+])
+
+# Also allow any Railway app domain dynamically
 RAILWAY_DOMAIN = os.getenv("RAILWAY_STATIC_URL", "")
 if RAILWAY_DOMAIN:
     CORS_ORIGINS.append(RAILWAY_DOMAIN)
 
-# Allow Railway public domains (both frontend and backend)
 RAILWAY_PUBLIC_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
 if RAILWAY_PUBLIC_DOMAIN:
     CORS_ORIGINS.append(f"https://{RAILWAY_PUBLIC_DOMAIN}")
 
-# Allow Railway URL (frontend service)
 RAILWAY_URL = os.getenv("RAILWAY_URL", "")
 if RAILWAY_URL:
     CORS_ORIGINS.append(RAILWAY_URL)
@@ -55,7 +61,9 @@ for key, value in os.environ.items():
             CORS_ORIGINS.append(value)
 
 # Filter out empty strings
-CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS if origin.strip()]
+CORS_ORIGINS = list(dict.fromkeys(CORS_ORIGINS))  # unique, keep order
+
+logger.info(f"CORS origins: {CORS_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,

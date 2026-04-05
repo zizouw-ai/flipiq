@@ -172,9 +172,9 @@ def require_auth(
     # Check for dev mode token
     if token == "dev-token":
         # Return a mock user for dev mode with unlimited access
-        # Use high ID to avoid collision with real users
+        # Use ID=1 to avoid FK issues on PostgreSQL
         return User(
-            id=999999,
+            id=1,
             email="dev@local",
             name="Developer",
             plan="pro",

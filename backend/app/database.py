@@ -41,6 +41,22 @@ def get_db():
         db.close()
 
 
+def seed_dev_user(db):
+    """Seed a dev user with ID=1 for dev mode to work on PostgreSQL."""
+    from app.models import User
+    from app.auth.jwt import get_password_hash
+    dev_user = db.query(User).filter(User.id == 1).first()
+    if not dev_user:
+        hashed = get_password_hash("devpassword")
+        # Use text() for explicit ID insert on PostgreSQL with sequences
+        db.execute(text(
+            "INSERT INTO users (id, email, hashed_password, name, plan, is_active, is_verified) "
+            "VALUES (1, :email, :hashed, :name, :plan, 1, 1)"
+        ), {"email": "dev@local", "hashed": hashed, "name": "Developer", "plan": "pro"})
+        db.commit()
+        logger.info("Dev user created (id=1)")
+
+
 def seed_auction_houses(db):
     """Seed preset auction house configs if table is empty."""
     from app.models import AuctionHouseConfig
@@ -88,6 +104,7 @@ def init_db():
     # Seed default data on startup
     db = SessionLocal()
     try:
+        seed_dev_user(db)
         seed_auction_houses(db)
         seed_shipping_presets(db)
         logger.info("Default data seeded")

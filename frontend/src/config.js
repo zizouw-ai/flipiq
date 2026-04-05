@@ -72,8 +72,20 @@ export async function apiFetch(path, options = {}) {
 export async function downloadFile(path, options = {}) {
   const url = `${API_URL}${path}`
   
+  // Get auth headers from authStore
+  let authHeaders = {}
   try {
-    const res = await fetch(url, options)
+    const { useAuthStore } = await import('./store/authStore')
+    authHeaders = useAuthStore.getState().getAuthHeaders()
+  } catch (e) {
+    // If auth store not available, skip auth headers
+  }
+  
+  try {
+    const res = await fetch(url, {
+      headers: authHeaders,
+      ...options,
+    })
     
     if (!res.ok) {
       const errText = await res.text().catch(() => 'Unknown error')
